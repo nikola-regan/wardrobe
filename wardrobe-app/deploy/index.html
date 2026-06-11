@@ -1,0 +1,2648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>衣橱管理系统</title>
+<style>
+  /* ===== 基础变量与重置 ===== */
+  :root{
+    --navy:#1f3a5f;
+    --navy-dark:#16293f;
+    --navy-light:#3a5a85;
+    --navy-pale:#e8edf4;
+    --bg:#f6f7f9;
+    --card:#ffffff;
+    --line:#dde3ea;
+    --text:#23303f;
+    --muted:#7a8694;
+    --green:#1f7a4d;
+    --green-bg:#e3f2e9;
+    --red:#b3261e;
+    --red-bg:#fbe9e7;
+    --yellow:#8a6d00;
+    --yellow-bg:#fdf3d0;
+    --gray:#5f6b78;
+    --gray-bg:#eceff2;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;
+  }
+  /* ===== 顶部栏与 Tab ===== */
+  header{background:var(--navy);color:#fff;padding:18px 32px 0;}
+  header h1{font-size:20px;font-weight:600;letter-spacing:2px;}
+  header p.sub{color:#b9c6d8;font-size:12px;margin-top:2px;}
+  nav.tabs{display:flex;gap:4px;margin-top:14px;}
+  nav.tabs button{
+    background:transparent;border:none;color:#c4d0e0;padding:10px 18px;font-size:14px;
+    cursor:pointer;border-radius:6px 6px 0 0;font-family:inherit;
+  }
+  nav.tabs button:hover{color:#fff;background:var(--navy-light);}
+  nav.tabs button.active{background:var(--bg);color:var(--navy);font-weight:600;}
+  main{max-width:1080px;margin:0 auto;padding:24px 32px 60px;}
+  section.tab-panel{display:none;}
+  section.tab-panel.active{display:block;}
+  /* ===== 卡片与排版 ===== */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:20px 24px;margin-bottom:20px;}
+  .card h2{font-size:15px;color:var(--navy);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--line);letter-spacing:1px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .stat-row{display:flex;gap:28px;flex-wrap:wrap;}
+  .stat{min-width:110px;}
+  .stat .num{font-size:28px;font-weight:600;color:var(--navy);}
+  .stat .lbl{font-size:12px;color:var(--muted);}
+  .empty{color:var(--muted);font-size:13px;padding:6px 0;}
+  .rules-missing{background:var(--red-bg);color:var(--red);padding:10px 16px;border-radius:6px;margin-bottom:20px;font-size:13px;}
+  /* ===== 进度条(类目上限) ===== */
+  .cap-row{margin-bottom:10px;}
+  .cap-row .cap-label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px;}
+  .cap-row .cap-label .over{color:var(--red);font-weight:600;}
+  .bar-track{background:var(--navy-pale);border-radius:4px;height:10px;overflow:hidden;}
+  .bar-fill{background:var(--navy);height:100%;border-radius:4px;transition:width .3s;}
+  .bar-fill.exceeded{background:var(--red);}
+  /* ===== 场景配比横向条形 ===== */
+  .scene-row{margin-bottom:14px;}
+  .scene-row .scene-name{font-size:13px;font-weight:600;margin-bottom:4px;}
+  .scene-bar{display:flex;align-items:center;gap:8px;margin-bottom:3px;font-size:12px;}
+  .scene-bar .tag{width:34px;color:var(--muted);text-align:right;}
+  .scene-bar .bar-track{flex:1;}
+  .scene-bar .pct{width:46px;color:var(--text);}
+  .bar-fill.target{background:#9fb2c9;}
+  .deviation{font-size:12px;color:var(--muted);margin-top:6px;}
+  /* ===== 表格 ===== */
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{background:var(--navy-pale);color:var(--navy);text-align:left;padding:8px 10px;font-weight:600;white-space:nowrap;}
+  td{padding:8px 10px;border-bottom:1px solid var(--line);}
+  tbody tr.clickable{cursor:pointer;}
+  tbody tr.clickable:hover{background:#f0f4f9;}
+  .badge{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;white-space:nowrap;}
+  .b-active{background:var(--green-bg);color:var(--green);}
+  .b-buffer{background:var(--yellow-bg);color:var(--yellow);}
+  .b-memorial{background:var(--navy-pale);color:var(--navy);}
+  .b-retired{background:var(--gray-bg);color:var(--gray);}
+  .b-pass{background:var(--green-bg);color:var(--green);}
+  .b-fail{background:var(--red-bg);color:var(--red);}
+  .b-warn{background:var(--yellow-bg);color:var(--yellow);}
+  .b-llm{background:var(--gray-bg);color:var(--gray);}
+  /* ===== 按钮 ===== */
+  button.btn{
+    font-family:inherit;font-size:13px;padding:7px 16px;border-radius:6px;cursor:pointer;
+    border:1px solid var(--navy);background:var(--navy);color:#fff;
+  }
+  button.btn:hover{background:var(--navy-dark);}
+  button.btn.ghost{background:#fff;color:var(--navy);}
+  button.btn.ghost:hover{background:var(--navy-pale);}
+  button.btn.danger{background:var(--red);border-color:var(--red);}
+  button.btn.danger:hover{background:#8f1d17;}
+  button.mini{
+    font-family:inherit;font-size:12px;padding:2px 8px;border-radius:4px;cursor:pointer;
+    border:1px solid var(--line);background:#fff;color:var(--gray);margin-right:4px;white-space:nowrap;
+  }
+  button.mini:hover{border-color:var(--navy);color:var(--navy);}
+  /* ===== 表单 ===== */
+  .form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 20px;}
+  .form-grid .full{grid-column:1 / -1;}
+  label.fld{display:block;font-size:12px;color:var(--muted);}
+  label.fld span.t{display:block;margin-bottom:4px;}
+  input[type=text],input[type=number],input[type=date],select,textarea{
+    width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:6px;
+    font-family:inherit;font-size:13px;background:#fff;color:var(--text);
+  }
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--navy);}
+  textarea{resize:vertical;min-height:56px;}
+  .filters{display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+  .filters select{width:auto;min-width:120px;}
+  .id-preview{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--navy);font-weight:600;}
+  .form-actions{margin-top:18px;display:flex;gap:10px;}
+  /* ===== 弹层 ===== */
+  .modal-mask{
+    display:none;position:fixed;inset:0;background:rgba(22,41,63,.5);z-index:50;
+    align-items:flex-start;justify-content:center;padding:60px 16px;overflow:auto;
+  }
+  .modal-mask.show{display:flex;}
+  .modal{background:#fff;border-radius:10px;padding:24px 28px;width:680px;max-width:100%;}
+  .modal h3{color:var(--navy);font-size:16px;margin-bottom:16px;}
+  .modal.warn-modal{width:520px;border-top:5px solid var(--red);}
+  .warn-list{background:var(--red-bg);border-radius:6px;padding:12px 16px;margin-bottom:16px;}
+  .warn-list li{color:var(--red);margin-left:18px;}
+  /* ===== 购买决策步骤 ===== */
+  .step{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px dashed var(--line);}
+  .step:last-child{border-bottom:none;}
+  .step .badge{margin-top:2px;min-width:96px;text-align:center;}
+  .step .s-name{font-weight:600;}
+  .step .s-detail{color:var(--muted);font-size:13px;}
+  .verdict{margin-top:16px;padding:14px 18px;border-radius:8px;background:var(--navy-pale);color:var(--navy);font-weight:600;font-size:15px;}
+  /* ===== 数据页 ===== */
+  .data-actions{display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
+  .hint{font-size:12px;color:var(--muted);margin-top:8px;}
+  /* ===== 照片 / 缩略图 ===== */
+  .no-photos .photo-feature{display:none !important;}
+  div.fld{font-size:12px;color:var(--muted);}
+  .thumb{width:38px;height:38px;border-radius:4px;background:var(--gray-bg);display:inline-block;overflow:hidden;vertical-align:middle;}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .photo-preview{width:84px;height:84px;border-radius:6px;background:var(--gray-bg);overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;}
+  .photo-preview img{width:100%;height:100%;object-fit:cover;}
+  input[type=file]{font-size:12px;}
+  /* ===== 盘点提醒横幅 ===== */
+  .audit-banner{background:var(--yellow-bg);color:var(--yellow);border:1px solid #e6d488;border-radius:6px;padding:10px 16px;margin-bottom:20px;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;}
+  /* ===== 搭配建议 ===== */
+  .outfit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px;}
+  .outfit-card{border:1px solid var(--line);border-radius:8px;padding:14px;background:#fff;}
+  .outfit-card .o-scene{font-weight:600;color:var(--navy);margin-bottom:8px;font-size:13px;}
+  .o-items{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
+  .o-it{width:84px;height:84px;border-radius:6px;overflow:hidden;position:relative;background:var(--gray-bg);}
+  .o-it img{width:100%;height:100%;object-fit:cover;display:block;}
+  .o-it span{position:absolute;left:0;right:0;bottom:0;font-size:11px;line-height:1.3;padding:2px 4px;background:rgba(22,41,63,.65);color:#fff;text-align:center;}
+  .o-it.block{display:flex;align-items:center;justify-content:center;text-align:center;}
+  .o-it.block span{position:static;background:transparent;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45);padding:4px;}
+  .o-note{font-size:12px;color:var(--muted);margin-bottom:10px;}
+  /* ===== AI 助手(半自动) ===== */
+  .ai-helper{border:1px dashed var(--line);border-radius:8px;padding:12px 14px;margin-top:12px;background:#fbfcfe;}
+  .ai-helper .ai-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap;}
+  .ai-helper textarea{margin-bottom:8px;font-size:12px;}
+  .ai-helper .ai-fallback{min-height:90px;font-family:ui-monospace,Menlo,Consolas,monospace;}
+  .ai-helper .ai-paste{min-height:72px;}
+  .ai-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .ai-msg{font-size:12px;}
+  .ai-msg.ok{color:var(--green);}
+  .ai-msg.err{color:var(--red);}
+  .uncertain{background:var(--yellow-bg) !important;border-color:var(--yellow) !important;}
+  .ai-mode{display:flex;gap:14px;font-size:12px;color:var(--muted);align-items:center;flex-wrap:wrap;}
+  .outfit-result{margin-top:8px;font-size:12px;}
+  .outfit-result .of-line{margin:2px 0;}
+  .advice-card{margin-top:14px;border-radius:8px;padding:14px 18px;border:1px solid var(--line);}
+  .advice-card.buy{background:var(--green-bg);border-color:var(--green);}
+  .advice-card.nobuy{background:var(--red-bg);border-color:var(--red);}
+  .advice-card.swap{background:var(--yellow-bg);border-color:var(--yellow);}
+  .advice-card h4{font-size:14px;margin-bottom:6px;}
+  .advice-card ul{margin-left:18px;font-size:13px;}
+  /* ===== 新增登记:录入模式卡片 + 拍照流程 ===== */
+  .mode-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+  .mode-card{
+    border:2px solid var(--line);border-radius:10px;background:#fff;padding:16px 18px;
+    cursor:pointer;text-align:left;font-family:inherit;
+  }
+  .mode-card:hover{border-color:var(--navy-light);}
+  .mode-card.selected{border-color:var(--navy);background:var(--navy-pale);}
+  .mode-card .m-title{font-size:15px;font-weight:600;color:var(--navy);margin-bottom:4px;}
+  .mode-card .m-desc{font-size:12px;color:var(--muted);line-height:1.5;}
+  .flow-step{border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:14px;background:#fbfcfe;}
+  .flow-step-title{font-weight:600;color:var(--navy);font-size:13px;margin-bottom:8px;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>衣橱管理系统</h1>
+  <p class="sub">极简衣橱 · 规则化管理</p>
+  <nav class="tabs" id="tabs">
+    <button data-tab="overview" class="active">盘点总览</button>
+    <button data-tab="list">衣物清单</button>
+    <button data-tab="add">新增登记</button>
+    <button data-tab="suggest">搭配建议</button>
+    <button data-tab="purchase">购买决策</button>
+    <button data-tab="data">数据</button>
+  </nav>
+</header>
+
+<main>
+  <div id="rulesMissing" class="rules-missing" style="display:none">
+    规则引擎(Rules)未加载:页面只能浏览数据,涉及规则的功能暂不可用。
+  </div>
+
+  <!-- 盘点到期提醒横幅 —— Rules.auditReminder -->
+  <div id="auditBanner" class="audit-banner" style="display:none"></div>
+
+  <!-- ========== Tab 1 盘点总览 ========== -->
+  <section class="tab-panel active" id="panel-overview">
+    <div class="card">
+      <h2>总量概览</h2>
+      <div class="stat-row" id="ovStats"></div>
+      <div class="form-actions" style="align-items:center">
+        <button type="button" class="btn ghost" id="btnAuditDone">完成本次盘点</button>
+        <span class="hint" id="lastAuditInfo" style="margin-top:0"></span>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h2>各类目数量 / 上限</h2>
+        <div id="ovCaps"></div>
+      </div>
+      <div class="card">
+        <h2>场景配比(目标 40 / 40 / 20)</h2>
+        <div id="ovScene"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>本季升级建议</h2>
+      <div id="ovUpgrade"></div>
+    </div>
+    <div class="card">
+      <h2>淘汰候选(三轴评估)</h2>
+      <div id="ovCandidates"></div>
+    </div>
+    <div class="card">
+      <h2>缓冲区到期提醒</h2>
+      <div id="ovBuffer"></div>
+    </div>
+    <div class="card">
+      <h2>到龄复查</h2>
+      <div id="ovAgeAudit"></div>
+    </div>
+  </section>
+
+  <!-- ========== Tab 2 衣物清单 ========== -->
+  <section class="tab-panel" id="panel-list">
+    <div class="card">
+      <h2>衣物清单</h2>
+      <div class="filters">
+        <label>类目
+          <select id="filterCategory"><option value="">全部类目</option></select>
+        </label>
+        <label>状态
+          <select id="filterStatus">
+            <option value="">全部状态</option>
+            <option value="active">在役</option>
+            <option value="buffer">缓冲区</option>
+            <option value="memorial">纪念盒</option>
+            <option value="retired">已淘汰</option>
+          </select>
+        </label>
+        <span class="hint" id="listCount"></span>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th class="photo-feature">照片</th>
+              <th>编号</th><th>名称</th><th>类目</th><th>颜色</th><th>场景</th><th>分层</th>
+              <th>状态评分</th><th>档次评分</th><th>频率</th><th>状态</th><th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="listBody"></tbody>
+        </table>
+      </div>
+      <p class="hint">点击行可编辑该衣物。</p>
+    </div>
+  </section>
+
+  <!-- ========== Tab 3 新增登记 ========== -->
+  <section class="tab-panel" id="panel-add">
+    <div class="card">
+      <h2>新增登记</h2>
+      <!-- 录入模式选择(单选;选择后才显示对应表单区) -->
+      <div class="mode-cards" id="addModeCards">
+        <button type="button" class="mode-card" data-mode="photo">
+          <div class="m-title">📷 拍照录入</div>
+          <div class="m-desc">三步走:上传衣服照片或收据/标签照片 → 复制打标 Prompt 发给 claude.ai 并粘贴回复解析 → 确认回填好的表单后提交。</div>
+        </button>
+        <button type="button" class="mode-card" data-mode="manual">
+          <div class="m-title">✍️ 手动录入</div>
+          <div class="m-desc">直接填写表单完成登记,照片为可选附加项。</div>
+        </button>
+      </div>
+      <p class="hint" id="addModeHint" style="margin-top:0">请先选择一种录入方式。</p>
+
+      <!-- 拍照录入:流程引导区 -->
+      <div id="photoFlow" style="display:none">
+        <div class="flow-step" id="pfStep1">
+          <div class="flow-step-title">第一步 · 上传照片</div>
+          <div class="ai-mode">
+            <span>照片类型:</span>
+            <label><input type="radio" name="pfType" value="photo" checked> 衣服照片</label>
+            <label><input type="radio" name="pfType" value="receipt"> 收据或衣服标签照片</label>
+            <span class="hint" id="pfTypeHint" style="margin-top:0"></span>
+          </div>
+          <div style="margin-top:10px">
+            <input type="file" id="pfPhoto" accept="image/*">
+            <div class="photo-preview" id="pfPreview" style="margin-top:8px">无照片</div>
+          </div>
+        </div>
+        <div class="flow-step" id="pfStep2" style="display:none">
+          <div class="flow-step-title">第二步 · 复制打标 Prompt → 粘贴回复 → 解析回填</div>
+          <div id="pfAiWrap"></div>
+        </div>
+        <div class="flow-step" id="pfStep3" style="display:none">
+          <div class="flow-step-title">第三步 · 确认表单并提交</div>
+          <p class="hint" style="margin-top:0">解析结果已回填到下方表单,黄色高亮为 AI 不确定字段,请人工确认或修改后提交。</p>
+        </div>
+      </div>
+
+      <!-- 共用表单:手动模式直接显示;拍照模式解析成功后(第三步)显示 -->
+      <form id="addForm" style="display:none">
+        <div class="form-grid">
+          <label class="fld"><span class="t">类目 *</span>
+            <select id="addCategory" required></select>
+          </label>
+          <label class="fld"><span class="t">编号(自动生成)</span>
+            <input type="text" id="addId" class="id-preview" readonly value="—">
+          </label>
+          <label class="fld"><span class="t">名称 *</span>
+            <input type="text" id="addName" required placeholder="例:白色牛津衬衫">
+          </label>
+          <label class="fld"><span class="t">颜色 *</span>
+            <select id="addColor" required></select>
+            <input type="text" id="addColorOther" placeholder="手动填写颜色" style="display:none;margin-top:6px">
+          </label>
+          <label class="fld"><span class="t">场景 *</span>
+            <select id="addScene"></select>
+          </label>
+          <label class="fld"><span class="t">分层</span>
+            <select id="addLayer"></select>
+          </label>
+          <label class="fld"><span class="t">品牌</span>
+            <input type="text" id="addBrand">
+          </label>
+          <label class="fld"><span class="t">购入日期</span>
+            <input type="date" id="addDate">
+          </label>
+          <label class="fld"><span class="t">价格(GBP)</span>
+            <input type="number" id="addPrice" min="0" step="0.01">
+          </label>
+          <label class="fld"><span class="t">状态评分</span>
+            <select id="addCondition"><option>A</option><option selected>B</option><option>C</option></select>
+          </label>
+          <label class="fld"><span class="t">档次评分</span>
+            <select id="addGrade"><option>A</option><option selected>B</option><option>C</option></select>
+          </label>
+          <label class="fld"><span class="t">使用频率</span>
+            <select id="addFrequency"><option>高</option><option selected>中</option><option>低</option><option>零</option></select>
+          </label>
+          <label class="fld full"><span class="t">备注</span>
+            <textarea id="addNotes"></textarea>
+          </label>
+          <label class="fld photo-feature"><span class="t">上传照片(可选)</span>
+            <input type="file" id="addPhoto" accept="image/*">
+          </label>
+          <div class="fld photo-feature"><span class="t" style="display:block;margin-bottom:4px">照片预览</span>
+            <div class="photo-preview" id="addPhotoPreview">无照片</div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn">提交登记</button>
+          <button type="reset" class="btn ghost" id="addReset">重置</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ========== Tab 搭配建议 ========== -->
+  <section class="tab-panel" id="panel-suggest">
+    <div class="card">
+      <h2>搭配建议</h2>
+      <div class="filters">
+        <label>场景
+          <select id="suggestScene"></select>
+        </label>
+        <button type="button" class="btn ghost" id="suggestRefresh">换一批</button>
+      </div>
+      <div id="suggestCards" class="outfit-grid"></div>
+    </div>
+    <div class="card" id="collageCard" style="display:none">
+      <h2>拼贴图预览</h2>
+      <canvas id="collageCanvas" width="600" height="800" style="max-width:100%;border:1px solid var(--line);border-radius:6px;background:#fff"></canvas>
+      <div class="form-actions">
+        <button type="button" class="btn" id="collageDownload">下载 PNG</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== Tab 4 购买决策 ========== -->
+  <section class="tab-panel" id="panel-purchase">
+    <div class="card">
+      <h2>购买决策检查</h2>
+      <form id="buyForm">
+        <div class="form-grid">
+          <label class="fld"><span class="t">名称 *</span>
+            <input type="text" id="buyName" required placeholder="想买的衣物名称">
+          </label>
+          <label class="fld"><span class="t">类目 *</span>
+            <select id="buyCategory" required></select>
+          </label>
+          <label class="fld"><span class="t">颜色 *</span>
+            <input type="text" id="buyColor" required>
+          </label>
+          <label class="fld"><span class="t">场景 *</span>
+            <select id="buyScene"></select>
+          </label>
+          <label class="fld"><span class="t">价格(GBP)*</span>
+            <input type="number" id="buyPrice" min="0" step="0.01" required>
+          </label>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn">运行五步检查</button>
+        </div>
+      </form>
+    </div>
+    <div class="card" id="buyResultCard" style="display:none">
+      <h2>检查结果</h2>
+      <div id="buySteps"></div>
+      <div class="verdict" id="buyVerdict"></div>
+      <!-- AI 综合购买建议助手 -->
+      <div id="buyAdviceWrap"></div>
+    </div>
+  </section>
+
+  <!-- ========== Tab 5 数据 ========== -->
+  <section class="tab-panel" id="panel-data">
+    <div class="card">
+      <h2>数据管理</h2>
+      <div class="data-actions">
+        <button class="btn" id="btnExport">导出 JSON</button>
+        <button class="btn ghost" id="btnImport">导入 JSON</button>
+        <input type="file" id="importFile" accept=".json,application/json" style="display:none">
+        <button class="btn danger" id="btnClear">清空数据</button>
+      </div>
+      <p class="hint">导入将校验顶层结构(需包含 config 与 items,缺 meta 时自动补默认),通过后整体替换当前数据;清空将恢复为内置示例数据。照片存于浏览器 IndexedDB,不随 JSON 导出。</p>
+      <p class="hint" id="dataInfo"></p>
+    </div>
+    <div class="card" id="aiSettingsCard">
+      <h2>AI 设置(豆包)</h2>
+      <div class="form-grid">
+        <label class="fld"><span class="t">API Key</span>
+          <input type="password" id="aiKey" autocomplete="off" placeholder="火山方舟 API Key">
+        </label>
+        <label class="fld"><span class="t">模型名</span>
+          <input type="text" id="aiModel" placeholder="doubao-seed-1-6-251015">
+          <span class="hint">需在火山方舟控制台开通该模型</span>
+        </label>
+        <label class="fld"><span class="t">API 地址</span>
+          <input type="text" id="aiEndpoint" placeholder="http://127.0.0.1:8787/api/v3/chat/completions">
+          <span class="hint">本地代理地址,见 doubao-proxy.js</span>
+        </label>
+      </div>
+      <div class="form-actions" style="align-items:center">
+        <button type="button" class="btn" id="aiSave">保存设置</button>
+        <button type="button" class="btn ghost" id="aiTest">测试连接</button>
+        <span class="ai-msg" id="aiTestMsg"></span>
+      </div>
+      <p class="hint">配置存于浏览器 localStorage(键 wardrobe_ai_v1),与衣柜数据相互独立;导出衣柜 JSON 不会包含 API Key。使用前请先在本目录运行本地代理:<code>node doubao-proxy.js</code>。</p>
+    </div>
+  </section>
+</main>
+
+<!-- 编辑弹层 -->
+<div class="modal-mask" id="editMask">
+  <div class="modal">
+    <h3>编辑衣物 <span class="id-preview" id="editIdShow"></span></h3>
+    <form id="editForm">
+      <div class="form-grid">
+        <label class="fld"><span class="t">名称</span><input type="text" id="editName" required></label>
+        <label class="fld"><span class="t">类目</span><select id="editCategory"></select></label>
+        <label class="fld"><span class="t">颜色</span>
+          <select id="editColor"></select>
+          <input type="text" id="editColorOther" placeholder="手动填写颜色" style="display:none;margin-top:6px">
+        </label>
+        <label class="fld"><span class="t">场景</span><select id="editScene"></select></label>
+        <label class="fld"><span class="t">分层</span><select id="editLayer"></select></label>
+        <label class="fld"><span class="t">品牌</span><input type="text" id="editBrand"></label>
+        <label class="fld"><span class="t">购入日期</span><input type="date" id="editDate"></label>
+        <label class="fld"><span class="t">价格(GBP)</span><input type="number" id="editPrice" min="0" step="0.01"></label>
+        <label class="fld"><span class="t">状态评分</span><select id="editCondition"><option>A</option><option>B</option><option>C</option></select></label>
+        <label class="fld"><span class="t">档次评分</span><select id="editGrade"><option>A</option><option>B</option><option>C</option></select></label>
+        <label class="fld"><span class="t">使用频率</span><select id="editFrequency"><option>高</option><option>中</option><option>低</option><option>零</option></select></label>
+        <label class="fld"><span class="t">状态</span>
+          <select id="editStatus">
+            <option value="active">在役</option><option value="buffer">缓冲区</option>
+            <option value="memorial">纪念盒</option><option value="retired">已淘汰</option>
+          </select>
+        </label>
+        <label class="fld"><span class="t">符合色板</span>
+          <select id="editInPalette"><option value="true">是</option><option value="false">否</option></select>
+        </label>
+        <label class="fld full"><span class="t">备注</span><textarea id="editNotes"></textarea></label>
+        <label class="fld photo-feature"><span class="t">上传照片</span>
+          <input type="file" id="editPhoto" accept="image/*">
+        </label>
+        <div class="fld photo-feature"><span class="t" style="display:block;margin-bottom:4px">当前照片</span>
+          <div class="photo-preview" id="editPhotoPreview">无照片</div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn">保存</button>
+        <button type="button" class="btn ghost" id="editCancel">取消</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 约束警告弹层(新增登记触碰约束时) -->
+<div class="modal-mask" id="warnMask">
+  <div class="modal warn-modal">
+    <h3>⚠ 触碰衣橱约束</h3>
+    <ul class="warn-list" id="warnList"></ul>
+    <p style="margin-bottom:16px">仍要保存的话,系统会在备注中自动附上「破例」标记。</p>
+    <div class="form-actions">
+      <button type="button" class="btn ghost" id="warnCancel">返回修改</button>
+      <button type="button" class="btn danger" id="warnForce">坚持保存(记为破例)</button>
+    </div>
+  </div>
+</div>
+
+<!-- 规则引擎占位:由另一 agent 注入,定义全局对象 Rules -->
+<script>/**
+ * rules.js — 衣橱管理系统规则引擎
+ * 纯 JavaScript,无依赖,无 DOM 操作。
+ * 浏览器:window.Rules;Node:module.exports。
+ */
+(function () {
+  'use strict';
+
+  // ---------- 常量 ----------
+
+  var ID_PREFIX = {
+    '衬衫': 'SH',
+    'T恤': 'TS',
+    '针织': 'KN',
+    '裤装': 'TR',
+    '西装': 'SU',
+    '外层': 'OW',
+    '鞋': 'FW',
+    '运动': 'SP',
+    '配饰': 'AC'
+  };
+
+  var CATEGORIES = Object.keys(ID_PREFIX);
+
+  var SCENES = ['正式', '智能休闲', '运动'];
+
+  // 越靠后越差
+  var COND_ORDER = { A: 0, B: 1, C: 2 };
+  var GRADE_ORDER = { A: 0, B: 1, C: 2 };
+  var FREQ_ORDER = { '高': 0, '中': 1, '低': 2, '零': 3 };
+
+  var TIER_ORDER = ['第一梯队', '第二梯队', '第三梯队'];
+
+  var MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+  // 搭配生成:可作上装的类目
+  var TOP_CATEGORIES = ['衬衫', 'T恤', '针织', '西装'];
+
+  // 到龄复查:各梯队服役年限阈值(年)
+  var TIER_AGE_LIMIT = { '第一梯队': 6, '第二梯队': 4, '第三梯队': 2 };
+
+  // 到龄复查:config.tiers 缺失时的默认梯队表
+  var DEFAULT_TIERS = {
+    '第一梯队': ['鞋', '外层', '西装'],
+    '第二梯队': ['衬衫', '针织', '裤装'],
+    '第三梯队': ['T恤', '运动', '配饰']
+  };
+
+  // ---------- 内部工具 ----------
+
+  function activeItems(items) {
+    return (items || []).filter(function (it) {
+      return it && it.status === 'active';
+    });
+  }
+
+  function paletteColors(config) {
+    var p = (config && config.palette) || {};
+    return [].concat(p.main || [], p.accent || []);
+  }
+
+  function inPalette(color, config) {
+    return paletteColors(config).indexOf(color) !== -1;
+  }
+
+  function capFor(category, config) {
+    var caps = (config && config.caps) || {};
+    if (Object.prototype.hasOwnProperty.call(caps, category)) {
+      return caps[category];
+    }
+    if (Object.prototype.hasOwnProperty.call(caps, '其余')) {
+      return caps['其余'];
+    }
+    return null;
+  }
+
+  function tierOf(category, config) {
+    var tiers = (config && config.tiers) || {};
+    for (var i = 0; i < TIER_ORDER.length; i++) {
+      var name = TIER_ORDER[i];
+      if ((tiers[name] || []).indexOf(category) !== -1) return name;
+    }
+    return null;
+  }
+
+  function defaultTierOf(category) {
+    for (var i = 0; i < TIER_ORDER.length; i++) {
+      var name = TIER_ORDER[i];
+      if ((DEFAULT_TIERS[name] || []).indexOf(category) !== -1) return name;
+    }
+    return null;
+  }
+
+  // 解析 "YYYY-MM" 或 "YYYY-MM-DD",缺日按 1 号计
+  function ymdParts(s) {
+    var m = String(s || '').match(/^(\d{4})-(\d{2})(?:-(\d{2}))?/);
+    if (!m) return null;
+    return { y: parseInt(m[1], 10), mo: parseInt(m[2], 10), d: m[3] ? parseInt(m[3], 10) : 1 };
+  }
+
+  // 可复现伪随机(mulberry32)
+  function mulberry32(seed) {
+    var t = seed >>> 0;
+    return function () {
+      t = (t + 0x6D2B79F5) >>> 0;
+      var r = t;
+      r = Math.imul(r ^ (r >>> 15), r | 1);
+      r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
+      return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function axisReasons(item) {
+    var reasons = [];
+    if (item.condition === 'C') reasons.push('状态轴:评分C');
+    if (item.frequency === '零' && item.scene !== '正式') reasons.push('使用轴:一年未穿');
+    if (item.grade === 'C') reasons.push('档次轴:评分C');
+    return reasons;
+  }
+
+  // ---------- API ----------
+
+  /**
+   * 1. nextId(category, items) → 下一个编号字符串,如 "SH-008"
+   */
+  function nextId(category, items) {
+    var prefix = ID_PREFIX[category];
+    if (!prefix) return null;
+    var max = 0;
+    var re = new RegExp('^' + prefix + '-(\\d+)$');
+    (items || []).forEach(function (it) {
+      if (!it || typeof it.id !== 'string') return;
+      var m = it.id.match(re);
+      if (m) {
+        var n = parseInt(m[1], 10);
+        if (n > max) max = n;
+      }
+    });
+    var next = max + 1;
+    return prefix + '-' + String(next).padStart(3, '0');
+  }
+
+  /**
+   * 2. checkPalette(item, config) → {pass, message}
+   */
+  function checkPalette(item, config) {
+    var color = item ? item.color : undefined;
+    if (inPalette(color, config)) {
+      return { pass: true, message: '颜色「' + color + '」在调色板内,通过' };
+    }
+    return { pass: false, message: '颜色「' + color + '」不在调色板内,谨慎引入' };
+  }
+
+  /**
+   * 3. capStatus(items, config) → [{category, count, cap, exceeded}]
+   */
+  function capStatus(items, config) {
+    var act = activeItems(items);
+    return CATEGORIES.map(function (cat) {
+      var count = act.filter(function (it) { return it.category === cat; }).length;
+      var cap = capFor(cat, config);
+      var exceeded = cap !== null && cap !== undefined && count > cap;
+      return { category: cat, count: count, cap: cap === undefined ? null : cap, exceeded: exceeded };
+    });
+  }
+
+  /**
+   * 4. sceneRatio(items, config) → {actual, target, deviation}
+   */
+  function sceneRatio(items, config) {
+    var act = activeItems(items);
+    var total = act.length;
+    var actual = {};
+    var target = {};
+    var deviation = {};
+    SCENES.forEach(function (scene) {
+      var count = act.filter(function (it) { return it.scene === scene; }).length;
+      actual[scene] = total === 0 ? 0 : count / total;
+      target[scene] = (config && config.sceneTarget && config.sceneTarget[scene]) || 0;
+      deviation[scene] = actual[scene] - target[scene];
+    });
+    return { actual: actual, target: target, deviation: deviation };
+  }
+
+  /**
+   * 5. threeAxisCandidates(items) → [{id, name, reasons}]
+   */
+  function threeAxisCandidates(items) {
+    return activeItems(items)
+      .map(function (it) {
+        return { id: it.id, name: it.name, reasons: axisReasons(it) };
+      })
+      .filter(function (c) { return c.reasons.length > 0; });
+  }
+
+  /**
+   * 6. worstInCategory(category, items) → item|null
+   */
+  function worstInCategory(category, items) {
+    var act = activeItems(items).filter(function (it) {
+      return it.category === category;
+    });
+    if (act.length === 0) return null;
+    var worst = act[0];
+    for (var i = 1; i < act.length; i++) {
+      if (isWorse(act[i], worst)) worst = act[i];
+    }
+    return worst;
+
+    function isWorse(a, b) {
+      var fa = axisReasons(a).length;
+      var fb = axisReasons(b).length;
+      if (fa !== fb) return fa > fb;
+      var ca = COND_ORDER[a.condition] || 0;
+      var cb = COND_ORDER[b.condition] || 0;
+      if (ca !== cb) return ca > cb;
+      var ga = GRADE_ORDER[a.grade] || 0;
+      var gb = GRADE_ORDER[b.grade] || 0;
+      if (ga !== gb) return ga > gb;
+      var qa = FREQ_ORDER[a.frequency] || 0;
+      var qb = FREQ_ORDER[b.frequency] || 0;
+      return qa > qb;
+    }
+  }
+
+  /**
+   * 7. bufferDue(items, todayISO, config) → [{id, name, daysInBuffer}]
+   */
+  function bufferDue(items, todayISO, config) {
+    var bufferDays = (config && config.bufferDays) || 90;
+    var today = new Date(todayISO).getTime();
+    return (items || [])
+      .filter(function (it) { return it && it.status === 'buffer' && it.bufferSince; })
+      .map(function (it) {
+        var since = new Date(it.bufferSince).getTime();
+        var days = Math.floor((today - since) / MS_PER_DAY);
+        return { id: it.id, name: it.name, daysInBuffer: days };
+      })
+      .filter(function (r) { return r.daysInBuffer >= bufferDays; });
+  }
+
+  /**
+   * 8. purchaseCheck(candidate, items, config) → {steps, verdict}
+   */
+  function purchaseCheck(candidate, items, config) {
+    var steps = [];
+    var act = activeItems(items);
+
+    // ① 调色板
+    var colorOk = inPalette(candidate.color, config);
+    steps.push({
+      step: 1,
+      name: '调色板检查',
+      result: colorOk ? 'pass' : 'fail',
+      detail: colorOk
+        ? '颜色「' + candidate.color + '」在调色板内'
+        : '颜色「' + candidate.color + '」不在调色板内'
+    });
+
+    // ② 搭配可行性
+    steps.push({
+      step: 2,
+      name: '搭配可行性',
+      result: 'llm',
+      detail: '需用 LLM 模板判断「' + candidate.name + '」能否与衣柜中至少 3 件单品组成完整搭配'
+    });
+
+    // ③ 类目上限
+    var catCount = act.filter(function (it) { return it.category === candidate.category; }).length;
+    var cap = capFor(candidate.category, config);
+    var capExceeded = cap !== null && cap !== undefined && catCount + 1 > cap;
+    var capDetail;
+    if (!capExceeded) {
+      capDetail = '类目「' + candidate.category + '」现有 ' + catCount + ' 件' +
+        (cap === null || cap === undefined ? ',无上限' : ',上限 ' + cap + ',购入后不超限');
+    } else {
+      var worst = worstInCategory(candidate.category, items);
+      capDetail = '类目「' + candidate.category + '」现有 ' + catCount + ' 件,已达上限 ' + cap +
+        (worst ? ',建议先淘汰:' + worst.name + '(' + worst.id + ')' : '');
+    }
+    steps.push({
+      step: 3,
+      name: '类目上限',
+      result: capExceeded ? 'fail' : 'pass',
+      detail: capDetail
+    });
+
+    // ④ 投资梯队 vs 价格
+    var tier = tierOf(candidate.category, config);
+    var hint = (config && config.tierPriceHint) || {};
+    var tierResult = 'pass';
+    var tierDetail = '价格与「' + (tier || '未知梯队') + '」定位相符';
+    if (tier === '第三梯队' && hint['第三梯队'] && typeof hint['第三梯队'].max === 'number' &&
+        candidate.price > hint['第三梯队'].max) {
+      tierResult = 'warn';
+      tierDetail = '第三梯队不买贵的:价格 ' + candidate.price + ' 超过上限 ' + hint['第三梯队'].max;
+    } else if (tier === '第一梯队' && hint['第一梯队'] && typeof hint['第一梯队'].min === 'number' &&
+        candidate.price < hint['第一梯队'].min) {
+      tierResult = 'warn';
+      tierDetail = '一分钱一分货:第一梯队建议预算不低于 ' + hint['第一梯队'].min + ',当前价格 ' + candidate.price;
+    }
+    steps.push({
+      step: 4,
+      name: '投资梯队 vs 价格',
+      result: tierResult,
+      detail: tierDetail
+    });
+
+    // ⑤ 替换式 vs 探索式
+    var exploratory = !inPalette(candidate.color, config) || catCount === 0;
+    steps.push({
+      step: 5,
+      name: '替换式 vs 探索式',
+      result: exploratory ? 'warn' : 'pass',
+      detail: exploratory
+        ? '探索式购买(' + (catCount === 0 ? '该类目暂无现役单品' : '颜色不在调色板') + '),注意风格漂移'
+        : '替换式购买,风格稳定'
+    });
+
+    var hasFail = steps.some(function (s) { return s.result === 'fail'; });
+    var hasLlm = steps.some(function (s) { return s.result === 'llm'; });
+    var verdict = hasFail ? '先处理不通过项' : (hasLlm ? '待搭配检查' : '可买');
+
+    return { steps: steps, verdict: verdict };
+  }
+
+  /**
+   * 9. quarterlyReport(items, config, todayISO)
+   *    → {total, caps, sceneRatio, candidates, bufferDue, upgradeSuggestion}
+   */
+  function quarterlyReport(items, config, todayISO) {
+    var act = activeItems(items);
+
+    // 升级建议:按梯队优先级找 grade 为 B/C 占比最高的类目,一次只推荐一个
+    var upgradeSuggestion = null;
+    for (var i = 0; i < TIER_ORDER.length && !upgradeSuggestion; i++) {
+      var tierName = TIER_ORDER[i];
+      var cats = ((config && config.tiers) || {})[tierName] || [];
+      var best = null;
+      cats.forEach(function (cat) {
+        var inCat = act.filter(function (it) { return it.category === cat; });
+        if (inCat.length === 0) return;
+        var bc = inCat.filter(function (it) { return it.grade === 'B' || it.grade === 'C'; }).length;
+        var ratio = bc / inCat.length;
+        if (ratio > 0 && (!best || ratio > best.ratio)) {
+          best = { category: cat, ratio: ratio, bc: bc, total: inCat.length, tier: tierName };
+        }
+      });
+      if (best) {
+        upgradeSuggestion = {
+          category: best.category,
+          reason: best.tier + '类目「' + best.category + '」中 ' + best.bc + '/' + best.total +
+            '(' + Math.round(best.ratio * 100) + '%)为 B/C 级,建议优先升级'
+        };
+      }
+    }
+
+    return {
+      total: act.length,
+      caps: capStatus(items, config),
+      sceneRatio: sceneRatio(items, config),
+      candidates: threeAxisCandidates(items),
+      bufferDue: bufferDue(items, todayISO, config),
+      upgradeSuggestion: upgradeSuggestion
+    };
+  }
+
+  /**
+   * 10. suggestOutfits(items, config, opts) → [{scene, itemIds, itemNames, note}]
+   *     确定性搭配生成,最多 opts.limit(默认 6)套。
+   *     opts: {limit, seed(默认 42), scene(可选过滤)}
+   */
+  function suggestOutfits(items, config, opts) {
+    opts = opts || {};
+    var limit = typeof opts.limit === 'number' ? opts.limit : 6;
+    var seed = typeof opts.seed === 'number' ? opts.seed : 42;
+    var sceneFilter = opts.scene || null;
+
+    var pool = activeItems(items).filter(function (it) {
+      return it.condition !== 'C';
+    });
+    var tops = pool.filter(function (it) {
+      return TOP_CATEGORIES.indexOf(it.category) !== -1;
+    });
+    var bottoms = pool.filter(function (it) { return it.category === '裤装'; });
+    var shoes = pool.filter(function (it) { return it.category === '鞋'; });
+    var outers = pool.filter(function (it) { return it.category === '外层'; });
+
+    var rand = mulberry32(seed);
+    var combos = [];
+
+    tops.forEach(function (top) {
+      bottoms.forEach(function (bottom) {
+        shoes.forEach(function (shoe) {
+          var trio = [top, bottom, shoe];
+          var scenes = trio.map(function (it) { return it.scene; });
+          var notes = [];
+          var outfitScene = null;
+
+          if (scenes[0] === scenes[1] && scenes[1] === scenes[2]) {
+            outfitScene = scenes[0];
+          } else {
+            var allFormalOrSmart = scenes.every(function (s) {
+              return s === '正式' || s === '智能休闲';
+            });
+            if (allFormalOrSmart &&
+                scenes.indexOf('正式') !== -1 &&
+                scenes.indexOf('智能休闲') !== -1) {
+              outfitScene = 'smart-casual';
+              notes.push('正式单品降级混搭');
+            }
+          }
+          if (!outfitScene) return;
+          // 西装作上装只配正式场景
+          if (top.category === '西装' && outfitScene !== '正式') return;
+          if (sceneFilter && outfitScene !== sceneFilter) return;
+
+          // 可选 +1 件外层(场景兼容;低频优先,id 兜底,保持确定性)
+          var pieces = trio.slice();
+          var compatible = outers.filter(function (o) {
+            if (outfitScene === 'smart-casual') {
+              return o.scene === '正式' || o.scene === '智能休闲';
+            }
+            return o.scene === outfitScene;
+          });
+          if (compatible.length > 0) {
+            compatible = compatible.slice().sort(function (a, b) {
+              var fa = FREQ_ORDER[a.frequency] || 0;
+              var fb = FREQ_ORDER[b.frequency] || 0;
+              if (fa !== fb) return fb - fa; // 低频/零优先
+              return a.id < b.id ? -1 : (a.id > b.id ? 1 : 0);
+            });
+            pieces.push(compatible[0]);
+            if (top.category === '针织') {
+              notes.push('针织作中间层,可叠穿外层');
+            }
+          }
+
+          var lowCount = pieces.filter(function (it) {
+            return it.frequency === '低' || it.frequency === '零';
+          }).length;
+          if (lowCount > 0) notes.push('含低频单品,建议唤醒');
+
+          combos.push({
+            scene: outfitScene,
+            itemIds: pieces.map(function (it) { return it.id; }),
+            itemNames: pieces.map(function (it) { return it.name; }),
+            note: notes.join(';'),
+            _score: lowCount,
+            _rand: rand()
+          });
+        });
+      });
+    });
+
+    combos.sort(function (a, b) {
+      if (a._score !== b._score) return b._score - a._score; // 低频组合优先
+      return a._rand - b._rand; // 同分用 seed 伪随机,可复现
+    });
+
+    return combos.slice(0, limit).map(function (c) {
+      return { scene: c.scene, itemIds: c.itemIds, itemNames: c.itemNames, note: c.note };
+    });
+  }
+
+  /**
+   * 11. ageAudit(items, todayISO, config) → [{id, name, ageYears, tier, suggestion}]
+   *     到龄复查:第三梯队 2 年、第二梯队 4 年、第一梯队 6 年。
+   *     tier 优先用 config.tiers 反查,缺省回退默认梯队表。
+   */
+  function ageAudit(items, todayISO, config) {
+    var today = ymdParts(todayISO);
+    if (!today) return [];
+    var out = [];
+    activeItems(items).forEach(function (it) {
+      if (!it.purchaseDate) return;
+      var bought = ymdParts(it.purchaseDate);
+      if (!bought) return;
+      var tier = tierOf(it.category, config) || defaultTierOf(it.category);
+      if (!tier) return;
+      var maxYears = TIER_AGE_LIMIT[tier];
+      var exact = (today.y - bought.y) +
+        (today.mo - bought.mo) / 12 +
+        (today.d - bought.d) / 365.25;
+      if (exact < maxYears) return;
+      var suggestion = (it.condition === 'B' || it.condition === 'C')
+        ? '到龄且状态下滑,建议进入三轴评估'
+        : '到龄但状态完好,可继续服役,下次盘点复查';
+      out.push({
+        id: it.id,
+        name: it.name,
+        ageYears: Math.round(exact * 10) / 10,
+        tier: tier,
+        suggestion: suggestion
+      });
+    });
+    return out;
+  }
+
+  /**
+   * 12. auditReminder(meta, todayISO, config) → {due, daysSince, message}
+   *     meta 形如 {lastAuditDate: ISO|null},meta 本身可为 null/undefined。
+   */
+  function auditReminder(meta, todayISO, config) {
+    var last = (meta && meta.lastAuditDate) || null;
+    if (!last) {
+      return { due: true, daysSince: null, message: '尚未做过首次盘点' };
+    }
+    var interval = (config && typeof config.auditIntervalDays === 'number')
+      ? config.auditIntervalDays
+      : 90;
+    var days = Math.floor(
+      (new Date(todayISO).getTime() - new Date(last).getTime()) / MS_PER_DAY
+    );
+    if (days >= interval) {
+      return { due: true, daysSince: days, message: '距上次盘点已 ' + days + ' 天,建议季度盘点' };
+    }
+    return { due: false, daysSince: days, message: '距上次盘点 ' + days + ' 天,暂无需盘点' };
+  }
+
+  // ---------- 导出 ----------
+
+  var Rules = {
+    nextId: nextId,
+    checkPalette: checkPalette,
+    capStatus: capStatus,
+    sceneRatio: sceneRatio,
+    threeAxisCandidates: threeAxisCandidates,
+    worstInCategory: worstInCategory,
+    bufferDue: bufferDue,
+    purchaseCheck: purchaseCheck,
+    quarterlyReport: quarterlyReport,
+    suggestOutfits: suggestOutfits,
+    ageAudit: ageAudit,
+    auditReminder: auditReminder
+  };
+
+  if (typeof window !== 'undefined') {
+    window.Rules = Rules;
+  }
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = Rules;
+  }
+})();
+</script>
+
+<script>
+"use strict";
+/* ================================================================
+ * 衣橱管理系统 — 前端逻辑
+ * 规则计算全部委托给全局 Rules 对象(见上方占位脚本),本文件不重复实现。
+ * ================================================================ */
+
+const STORAGE_KEY = "wardrobe_v1";
+const CATEGORIES = ["衬衫","T恤","针织","裤装","西装","外层","鞋","运动","配饰"];
+const SCENES = ["正式","智能休闲","运动"];
+const LAYERS = ["基础层","中间层","外层","不适用"];
+const STATUS_LABEL = { active:"在役", buffer:"缓冲区", memorial:"纪念盒", retired:"已淘汰" };
+
+/* ---------- 内置默认数据(无 localStorage 数据时使用) ---------- */
+const DEFAULT_DATA = {
+  meta: { lastAuditDate: null },
+  config: {
+    palette: { main: ["海军蓝","白","灰","深灰","黑"], accent: ["酒红","驼色"] },
+    caps: { "衬衫":8, "T恤":6, "针织":5, "裤装":6, "西装":3, "外层":5, "鞋":6, "运动":5, "配饰":8 },
+    sceneTarget: { "正式":0.4, "智能休闲":0.4, "运动":0.2 },
+    tiers: { A:"投资级", B:"主力", C:"消耗" },
+    tierPriceHint: { A:150, B:60, C:25 },
+    bufferDays: 90,
+    currency: "GBP"
+  },
+  items: [
+    { id:"SH-001", name:"白色牛津衬衫", category:"衬衫", color:"白", inPalette:true, scene:"智能休闲", layer:"基础层", brand:"Uniqlo", purchaseDate:"2024-03-10", price:29.9, currency:"GBP", condition:"A", grade:"B", frequency:"高", status:"active", bufferSince:null, notes:"" },
+    { id:"TR-001", name:"深灰羊毛西裤", category:"裤装", color:"深灰", inPalette:true, scene:"正式", layer:"不适用", brand:"M&S", purchaseDate:"2023-11-02", price:55, currency:"GBP", condition:"B", grade:"B", frequency:"中", status:"active", bufferSince:null, notes:"" },
+    { id:"KN-001", name:"海军蓝美利奴圆领针织", category:"针织", color:"海军蓝", inPalette:true, scene:"智能休闲", layer:"中间层", brand:"John Lewis", purchaseDate:"2024-10-15", price:49, currency:"GBP", condition:"A", grade:"A", frequency:"高", status:"active", bufferSince:null, notes:"" },
+    { id:"SO-001", name:"黑色德比皮鞋", category:"鞋", color:"黑", inPalette:true, scene:"正式", layer:"不适用", brand:"Loake", purchaseDate:"2023-05-20", price:180, currency:"GBP", condition:"B", grade:"A", frequency:"中", status:"active", bufferSince:null, notes:"" },
+    { id:"SP-001", name:"速干跑步T恤", category:"运动", color:"灰", inPalette:true, scene:"运动", layer:"基础层", brand:"Decathlon", purchaseDate:"2024-06-01", price:9.9, currency:"GBP", condition:"B", grade:"C", frequency:"高", status:"active", bufferSince:null, notes:"" },
+    { id:"TS-001", name:"旧 Logo 圆领T恤", category:"T恤", color:"红", inPalette:false, scene:"智能休闲", layer:"基础层", brand:"无名", purchaseDate:"2021-08-12", price:12, currency:"GBP", condition:"C", grade:"C", frequency:"零", status:"buffer", bufferSince:"2026-02-20", notes:"褪色明显" }
+  ]
+};
+
+/* ---------- 数据层:读取 / 持久化 ---------- */
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){
+      const d = JSON.parse(raw);
+      if(d && typeof d === "object" && d.config && Array.isArray(d.items)){
+        // 兼容旧数据:自动补 meta 字段(保存时随整体 state 一并保留)
+        if(!d.meta || typeof d.meta !== "object") d.meta = { lastAuditDate: null };
+        if(!("lastAuditDate" in d.meta)) d.meta.lastAuditDate = null;
+        return d;
+      }
+    }
+  }catch(e){ /* 解析失败则回退默认 */ }
+  return JSON.parse(JSON.stringify(DEFAULT_DATA));
+}
+function saveState(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); // 所有写操作后立即持久化
+}
+let state = loadState();
+saveState(); // 首次进入也落盘一份
+
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+const hasRules = (typeof Rules !== "undefined" && Rules);
+
+/* ---------- 工具 ---------- */
+function esc(s){
+  return String(s == null ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+function fmtPrice(p){ return (p == null || p === "") ? "—" : "£" + Number(p).toFixed(2); }
+function fillSelect(sel, opts, withEmpty){
+  sel.innerHTML = (withEmpty ? '<option value="">'+withEmpty+'</option>' : "") +
+    opts.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join("");
+}
+
+/* ---------- 颜色字段:select(色板 + 常见点缀色 + 其他…)+ 手动输入 ---------- */
+const COLOR_OTHER = "其他…";
+const COMMON_ACCENT_COLORS = ["酒红","墨绿","燕麦色","卡其","棕色","浅蓝"];
+function colorOptions(){
+  // 选项 = config.palette.main + config.palette.accent(若有)+ 常见点缀色 + 「其他…」,去重
+  const pal = (state.config && state.config.palette) || {};
+  const opts = [];
+  [].concat(pal.main || [], pal.accent || [], COMMON_ACCENT_COLORS)
+    .forEach(c => { if(c && c !== COLOR_OTHER && !opts.includes(c)) opts.push(c); });
+  opts.push(COLOR_OTHER);
+  return opts;
+}
+function setupColorField(selId, otherId){
+  const sel = document.getElementById(selId), other = document.getElementById(otherId);
+  fillSelect(sel, colorOptions());
+  sel.addEventListener("change", () => {
+    other.style.display = sel.value === COLOR_OTHER ? "block" : "none";
+    if(sel.value === COLOR_OTHER) other.focus();
+  });
+}
+function getColorValue(selId, otherId){
+  const sel = document.getElementById(selId);
+  return sel.value === COLOR_OTHER
+    ? document.getElementById(otherId).value.trim()
+    : sel.value;
+}
+function setColorValue(selId, otherId, color){
+  const sel = document.getElementById(selId), other = document.getElementById(otherId);
+  const v = String(color == null ? "" : color).trim();
+  if(v && v !== COLOR_OTHER && Array.from(sel.options).some(o => o.value === v)){
+    sel.value = v;
+    other.value = "";
+    other.style.display = "none";
+  }else{
+    // 不在选项内(或为空):落到「其他…」+ 手动输入框
+    sel.value = COLOR_OTHER;
+    other.value = v;
+    other.style.display = "block";
+  }
+}
+function refreshColorSelects(){
+  // config(色板)变更后重建选项,尽量保留当前值
+  [["addColor","addColorOther"],["editColor","editColorOther"]].forEach(([s, o]) => {
+    const cur = getColorValue(s, o);
+    fillSelect(document.getElementById(s), colorOptions());
+    setColorValue(s, o, cur || colorOptions()[0]);
+  });
+}
+
+/* ================================================================
+ * 照片存储:IndexedDB 小模块 photoDB
+ * 库名 wardrobe_photos / store photos / key = item.id / 值 = 压缩后 dataURL
+ * IndexedDB 不可用时:photosOK=false,body 加 no-photos 类隐藏照片功能,不报错
+ * ================================================================ */
+let photosOK = false;
+const photoDB = (() => {
+  const DB_NAME = "wardrobe_photos", STORE = "photos";
+  let dbPromise = null;
+  function open(){
+    if(typeof indexedDB === "undefined" || !indexedDB)
+      return Promise.reject(new Error("IndexedDB 不可用"));
+    if(dbPromise) return dbPromise;
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error || new Error("打开照片库失败"));
+      req.onblocked = () => reject(new Error("照片库被占用"));
+    });
+    return dbPromise;
+  }
+  async function get(id){
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const r = db.transaction(STORE).objectStore(STORE).get(id);
+      r.onsuccess = () => resolve(r.result || null);
+      r.onerror = () => reject(r.error);
+    });
+  }
+  async function put(id, dataURL){
+    const db = await open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readwrite");
+      tx.objectStore(STORE).put(dataURL, id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+  async function getMany(ids){
+    const out = {};
+    if(!ids || !ids.length) return out;
+    try{
+      const db = await open();
+      return new Promise(resolve => {
+        const st = db.transaction(STORE).objectStore(STORE);
+        let n = 0;
+        ids.forEach(id => {
+          const r = st.get(id);
+          r.onsuccess = () => { if(r.result) out[id] = r.result; if(++n === ids.length) resolve(out); };
+          r.onerror = () => { if(++n === ids.length) resolve(out); };
+        });
+      });
+    }catch(e){ return out; }
+  }
+  return { open, get, put, getMany };
+})();
+
+/* 照片压缩:canvas 缩到最长边 600px,JPEG q0.8 */
+function compressPhoto(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        try{
+          const MAX = 600;
+          let w = img.width, h = img.height;
+          if(Math.max(w, h) > MAX){
+            const k = MAX / Math.max(w, h);
+            w = Math.round(w * k); h = Math.round(h * k);
+          }
+          const c = document.createElement("canvas");
+          c.width = w; c.height = h;
+          c.getContext("2d").drawImage(img, 0, 0, w, h);
+          resolve(c.toDataURL("image/jpeg", 0.8));
+        }catch(e){ reject(new Error("图片压缩失败")); }
+      };
+      img.onerror = () => reject(new Error("图片解码失败"));
+      img.src = reader.result;
+    };
+    reader.onerror = () => reject(new Error("文件读取失败"));
+    reader.readAsDataURL(file);
+  });
+}
+
+/* 颜色名 → 色块颜色(无照片时的占位渲染) */
+const COLOR_MAP = {
+  "海军蓝":"#1f3a5f","深灰":"#5a636d","驼色":"#c2a878","酒红":"#7c2a3a",
+  "白":"#f0f1ee","黑":"#23272d","灰":"#9aa3ab","蓝":"#33557f","红":"#b3261e",
+  "绿":"#3a6b4f","棕":"#6b4f3a","米":"#e8e0d0","卡其":"#b0a07a","粉":"#d8a0a8","黄":"#d8b94a"
+};
+function colorOf(colorName){
+  const s = String(colorName || "");
+  for(const k in COLOR_MAP){ if(s.includes(k)) return COLOR_MAP[k]; }
+  return "#7a8694";
+}
+function textColorFor(hex){
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+  if(!m) return "#ffffff";
+  const n = parseInt(m[1], 16);
+  const lum = 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
+  return lum > 165 ? "#23303f" : "#ffffff";
+}
+async function loadPhotoPreview(el, id){
+  el.innerHTML = "无照片";
+  if(!photosOK || !id) return;
+  try{
+    const url = await photoDB.get(id);
+    if(url) el.innerHTML = `<img src="${url}" alt="">`;
+  }catch(e){ /* 降级:保持占位 */ }
+}
+/* 表格缩略图异步填充 */
+async function fillThumbs(container){
+  if(!photosOK) return;
+  const els = Array.from(container.querySelectorAll("[data-thumb]"));
+  if(!els.length) return;
+  try{
+    const photos = await photoDB.getMany(els.map(el => el.dataset.thumb));
+    els.forEach(el => {
+      const p = photos[el.dataset.thumb];
+      if(p) el.innerHTML = `<img src="${p}" alt="">`;
+    });
+  }catch(e){ /* 降级:保持灰色占位块 */ }
+}
+
+/* ================================================================
+ * AI 助手(半自动模式,不调用任何 API)
+ * 统一交互组件:[复制 Prompt] + 粘贴回复 textarea + [解析回填]
+ * ================================================================ */
+/* 从粘贴文本中提取第一个 {...} JSON 块(容忍 ```json 围栏) */
+function extractFirstJson(text){
+  if(!text || !text.trim()) throw new Error("内容为空:请先把 Claude 的回复粘贴进来。");
+  const t = String(text);
+  const start = t.indexOf("{");
+  if(start < 0) throw new Error("未找到 JSON 对象:回复中没有 { 开头的内容。");
+  let depth = 0, inStr = false, escp = false;
+  for(let i = start; i < t.length; i++){
+    const ch = t[i];
+    if(inStr){
+      if(escp) escp = false;
+      else if(ch === "\\") escp = true;
+      else if(ch === '"') inStr = false;
+      continue;
+    }
+    if(ch === '"') inStr = true;
+    else if(ch === "{") depth++;
+    else if(ch === "}"){
+      depth--;
+      if(depth === 0){
+        const block = t.slice(start, i + 1);
+        try{ return JSON.parse(block); }
+        catch(e){ throw new Error("JSON 解析失败:" + e.message + "(请确认复制了完整回复)"); }
+      }
+    }
+  }
+  throw new Error("JSON 对象不完整:大括号未闭合,可能没有复制完整。");
+}
+
+/* ================================================================
+ * aiClient:豆包(火山方舟)API 客户端
+ * 配置存 localStorage 键 wardrobe_ai_v1(独立于衣柜数据 wardrobe_v1,
+ * 导出衣柜 JSON 不包含 API Key)。请求经本地代理 doubao-proxy.js 转发。
+ * ================================================================ */
+const AI_CFG_KEY = "wardrobe_ai_v1";
+const AI_DEFAULTS = {
+  apiKey: "",
+  model: "doubao-seed-1-6-251015",
+  endpoint: "http://127.0.0.1:8787/api/v3/chat/completions"
+};
+function loadAiConfig(){
+  try{
+    const raw = localStorage.getItem(AI_CFG_KEY);
+    if(raw){
+      const c = JSON.parse(raw);
+      if(c && typeof c === "object"){
+        return {
+          apiKey: typeof c.apiKey === "string" ? c.apiKey : "",
+          model: (typeof c.model === "string" && c.model.trim()) ? c.model.trim() : AI_DEFAULTS.model,
+          endpoint: (typeof c.endpoint === "string" && c.endpoint.trim()) ? c.endpoint.trim() : AI_DEFAULTS.endpoint
+        };
+      }
+    }
+  }catch(e){ /* 解析失败回退默认 */ }
+  return Object.assign({}, AI_DEFAULTS);
+}
+function saveAiConfig(cfg){
+  localStorage.setItem(AI_CFG_KEY, JSON.stringify({
+    apiKey: cfg.apiKey || "",
+    model: cfg.model || AI_DEFAULTS.model,
+    endpoint: cfg.endpoint || AI_DEFAULTS.endpoint
+  }));
+}
+function aiConfigured(){
+  const c = loadAiConfig();
+  return !!(c.apiKey && c.model && c.endpoint);
+}
+
+/* callDoubao({system, userText, imageDataURL?, maxTokens=1500}) → Promise<string>
+ * OpenAI 兼容 chat/completions;有图时 user content 为多模态数组(image_url + text);
+ * 取 choices[0].message.content;非 200 抛带状态码与 body 摘要的错误。 */
+async function callDoubao({ system, userText, imageDataURL, maxTokens = 1500 } = {}){
+  const cfg = loadAiConfig();
+  if(!cfg.apiKey) throw new Error("未配置 API Key,请先到「数据」页的 AI 设置中填写。");
+  const messages = [];
+  if(system) messages.push({ role: "system", content: system });
+  messages.push({
+    role: "user",
+    content: imageDataURL
+      ? [{ type: "image_url", image_url: { url: imageDataURL } }, { type: "text", text: userText }]
+      : userText
+  });
+  let resp;
+  try{
+    resp = await fetch(cfg.endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + cfg.apiKey
+      },
+      body: JSON.stringify({ model: cfg.model, messages, max_tokens: maxTokens })
+    });
+  }catch(e){
+    if(e && e.name === "TypeError")
+      throw new Error("无法连接,请确认已运行 node doubao-proxy.js 或检查 API 地址。");
+    throw e;
+  }
+  const bodyText = await resp.text();
+  if(!resp.ok){
+    let detail = "";
+    try{
+      const j = JSON.parse(bodyText);
+      detail = (j.error && j.error.message) || j.message || "";
+    }catch(e){ /* 非 JSON body */ }
+    if(!detail) detail = bodyText.slice(0, 200);
+    const err = new Error(
+      resp.status === 401
+        ? "401:API Key 错误或未授权。"
+        : "豆包接口返回 HTTP " + resp.status + ":" + detail);
+    err.status = resp.status;
+    throw err;
+  }
+  let data;
+  try{ data = JSON.parse(bodyText); }
+  catch(e){ throw new Error("返回内容不是合法 JSON:" + bodyText.slice(0, 200)); }
+  const content = data && data.choices && data.choices[0] &&
+    data.choices[0].message && data.choices[0].message.content;
+  if(typeof content !== "string" || !content)
+    throw new Error("返回中缺少 choices[0].message.content。");
+  return content;
+}
+
+/* 自动调用按钮注册表:配置变化时统一刷新文案 */
+const aiAutoButtons = [];
+function aiAutoLabel(){
+  return aiConfigured() ? "⚡ 自动调用豆包" : "先在数据页配置豆包 API";
+}
+function refreshAiAutoButtons(){
+  aiAutoButtons.forEach(b => { if(!b.disabled) b.textContent = aiAutoLabel(); });
+}
+
+/* 统一 AI 交互组件工厂 */
+function createAiHelper(opts){
+  const wrap = document.createElement("div");
+  wrap.className = "ai-helper";
+  wrap.innerHTML = `
+    ${opts.auto ? `<div class="ai-actions" style="margin-bottom:8px">
+      <button type="button" class="btn ai-auto"></button>
+      <span class="hint" style="margin-top:0">自动模式直接调用豆包并回填;也可用下方复制粘贴模式。</span>
+    </div>` : ""}
+    <div class="ai-head">
+      <button type="button" class="btn ghost ai-copy">${esc(opts.copyLabel || "复制 Prompt")}</button>
+      <span class="hint" style="margin-top:0">${esc(opts.hint || "")}</span>
+    </div>
+    <textarea class="ai-fallback" readonly style="display:none"></textarea>
+    <textarea class="ai-paste" placeholder="把 Claude 的回复整段粘贴到这里(可包含 \`\`\`json 围栏)"></textarea>
+    <div class="ai-actions">
+      <button type="button" class="btn ai-parse">解析回填</button>
+      <span class="ai-msg"></span>
+    </div>`;
+  const msg = wrap.querySelector(".ai-msg");
+  wrap.querySelector(".ai-copy").addEventListener("click", async () => {
+    let prompt;
+    try{ prompt = opts.getPrompt(); }
+    catch(e){ msg.textContent = "生成 Prompt 失败:" + e.message; msg.className = "ai-msg err"; return; }
+    try{
+      await navigator.clipboard.writeText(prompt);
+      msg.textContent = "已复制,请到 claude.ai 粘贴(并附上照片,如有)。";
+      msg.className = "ai-msg ok";
+    }catch(e){
+      // 剪贴板不可用:降级为可全选文本框
+      const fb = wrap.querySelector(".ai-fallback");
+      fb.value = prompt;
+      fb.style.display = "block";
+      fb.focus(); fb.select();
+      msg.textContent = "自动复制失败,已在上方展示 Prompt,请手动全选复制。";
+      msg.className = "ai-msg err";
+    }
+  });
+  wrap.querySelector(".ai-parse").addEventListener("click", () => {
+    try{
+      const data = extractFirstJson(wrap.querySelector(".ai-paste").value);
+      opts.onParsed(data);
+      msg.textContent = "解析成功,已回填。";
+      msg.className = "ai-msg ok";
+    }catch(e){
+      msg.textContent = e.message;
+      msg.className = "ai-msg err";
+    }
+  });
+  /* 自动模式:调用豆包 API → 回复走与粘贴模式同一解析契约(extractFirstJson → onParsed) */
+  if(opts.auto){
+    const autoBtn = wrap.querySelector(".ai-auto");
+    autoBtn.textContent = aiAutoLabel();
+    aiAutoButtons.push(autoBtn);
+    autoBtn.addEventListener("click", async () => {
+      if(!aiConfigured()){
+        // 未配置:跳转到「数据」tab 的 AI 设置区
+        document.querySelector('#tabs button[data-tab="data"]').click();
+        const card = document.getElementById("aiSettingsCard");
+        if(card) card.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      let userText, imageDataURL = null;
+      try{
+        userText = opts.getPrompt();
+        if(opts.auto.getImage) imageDataURL = opts.auto.getImage();
+      }catch(e){
+        msg.textContent = e.message;
+        msg.className = "ai-msg err";
+        return;
+      }
+      autoBtn.disabled = true;
+      autoBtn.textContent = "调用豆包中…";
+      msg.textContent = "正在调用豆包,请稍候…";
+      msg.className = "ai-msg";
+      try{
+        const reply = await callDoubao({
+          system: opts.auto.system || undefined,
+          userText,
+          imageDataURL,
+          maxTokens: opts.auto.maxTokens || 1500
+        });
+        wrap.querySelector(".ai-paste").value = reply; // 回复同步进粘贴框,便于核对/重解析
+        const data = extractFirstJson(reply);
+        opts.onParsed(data);
+        msg.textContent = "豆包返回并解析成功,已回填。";
+        msg.className = "ai-msg ok";
+      }catch(e){
+        msg.textContent = "自动调用失败:" + e.message + "(可改用复制粘贴模式)";
+        msg.className = "ai-msg err";
+      }finally{
+        autoBtn.disabled = false;
+        autoBtn.textContent = aiAutoLabel();
+      }
+    });
+  }
+  return wrap;
+}
+
+/* ---------- Tab 切换 ---------- */
+document.getElementById("tabs").addEventListener("click", e => {
+  const btn = e.target.closest("button[data-tab]");
+  if(!btn) return;
+  document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("active", b === btn));
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === "panel-" + btn.dataset.tab));
+  if(btn.dataset.tab === "suggest") renderSuggest(); // 进入搭配建议时刷新
+});
+
+/* ================================================================
+ * Tab 1 盘点总览
+ * ================================================================ */
+function renderOverview(){
+  const items = state.items, cfg = state.config;
+  const activeCount = items.filter(i => i.status === "active").length;
+  const bufferCount = items.filter(i => i.status === "buffer").length;
+  document.getElementById("ovStats").innerHTML = `
+    <div class="stat"><div class="num">${items.length}</div><div class="lbl">总件数</div></div>
+    <div class="stat"><div class="num">${activeCount}</div><div class="lbl">在役</div></div>
+    <div class="stat"><div class="num">${bufferCount}</div><div class="lbl">缓冲区</div></div>
+    <div class="stat"><div class="num">${items.filter(i=>i.status==="memorial").length}</div><div class="lbl">纪念盒</div></div>
+    <div class="stat"><div class="num">${items.filter(i=>i.status==="retired").length}</div><div class="lbl">已淘汰</div></div>`;
+
+  document.getElementById("lastAuditInfo").textContent =
+    (state.meta && state.meta.lastAuditDate)
+      ? `上次盘点:${state.meta.lastAuditDate}`
+      : "尚未记录过盘点。";
+
+  if(!hasRules){
+    ["ovCaps","ovScene","ovUpgrade","ovCandidates","ovBuffer","ovAgeAudit"].forEach(id =>
+      document.getElementById(id).innerHTML = '<p class="empty">规则引擎未加载。</p>');
+    return;
+  }
+
+  /* 各类目数量 vs 上限 —— Rules.capStatus */
+  try{
+    const caps = Rules.capStatus(items, cfg);
+    document.getElementById("ovCaps").innerHTML = caps.map(c => {
+      const pct = c.cap > 0 ? Math.min(c.count / c.cap, 1) * 100 : 0;
+      return `<div class="cap-row">
+        <div class="cap-label"><span>${esc(c.category)}</span>
+          <span class="${c.exceeded ? "over" : ""}">${c.count} / ${c.cap}${c.exceeded ? " 超限" : ""}</span></div>
+        <div class="bar-track"><div class="bar-fill ${c.exceeded ? "exceeded" : ""}" style="width:${pct}%"></div></div>
+      </div>`;
+    }).join("") || '<p class="empty">暂无数据。</p>';
+  }catch(e){ document.getElementById("ovCaps").innerHTML = '<p class="empty">计算出错:'+esc(e.message)+'</p>'; }
+
+  /* 场景配比 vs 目标 —— Rules.sceneRatio */
+  try{
+    const sr = Rules.sceneRatio(items, cfg);
+    document.getElementById("ovScene").innerHTML = SCENES.map(s => {
+      const a = Math.round((sr.actual[s] || 0) * 100);
+      const t = Math.round((sr.target && sr.target[s] || 0) * 100);
+      return `<div class="scene-row">
+        <div class="scene-name">${esc(s)}</div>
+        <div class="scene-bar"><span class="tag">实际</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${a}%"></div></div><span class="pct">${a}%</span></div>
+        <div class="scene-bar"><span class="tag">目标</span>
+          <div class="bar-track"><div class="bar-fill target" style="width:${t}%"></div></div><span class="pct">${t}%</span></div>
+      </div>`;
+    }).join("") + `<p class="deviation">总体偏离度:${(sr.deviation * 100).toFixed(1)}%</p>`;
+  }catch(e){ document.getElementById("ovScene").innerHTML = '<p class="empty">计算出错:'+esc(e.message)+'</p>'; }
+
+  /* 本季升级建议 —— Rules.quarterlyReport */
+  try{
+    const rep = Rules.quarterlyReport(items, cfg, todayISO());
+    const up = rep && rep.upgradeSuggestion;
+    document.getElementById("ovUpgrade").innerHTML = up && up.category
+      ? `<p><strong style="color:var(--navy)">${esc(up.category)}</strong> — ${esc(up.reason)}</p>`
+      : '<p class="empty">本季暂无升级建议。</p>';
+  }catch(e){ document.getElementById("ovUpgrade").innerHTML = '<p class="empty">计算出错:'+esc(e.message)+'</p>'; }
+
+  /* 淘汰候选 —— Rules.threeAxisCandidates */
+  try{
+    const cands = Rules.threeAxisCandidates(items);
+    document.getElementById("ovCandidates").innerHTML = cands.length
+      ? `<table><thead><tr><th>编号</th><th>名称</th><th>三轴原因</th></tr></thead><tbody>` +
+        cands.map(c => `<tr><td class="id-preview">${esc(c.id)}</td><td>${esc(c.name)}</td>
+          <td>${(c.reasons||[]).map(r=>`<span class="badge b-warn" style="margin-right:4px">${esc(r)}</span>`).join("")}</td></tr>`).join("") +
+        `</tbody></table>`
+      : '<p class="empty">暂无淘汰候选,衣橱状态良好。</p>';
+  }catch(e){ document.getElementById("ovCandidates").innerHTML = '<p class="empty">计算出错:'+esc(e.message)+'</p>'; }
+
+  /* 缓冲区到期 —— Rules.bufferDue */
+  try{
+    const due = Rules.bufferDue(items, todayISO(), cfg);
+    document.getElementById("ovBuffer").innerHTML = due.length
+      ? `<table><thead><tr><th>编号</th><th>名称</th><th>已在缓冲区</th></tr></thead><tbody>` +
+        due.map(d => `<tr><td class="id-preview">${esc(d.id)}</td><td>${esc(d.name)}</td>
+          <td><span class="badge b-fail">${d.daysInBuffer} 天(已到期)</span></td></tr>`).join("") +
+        `</tbody></table><p class="hint">到期物品建议在「衣物清单」中做出淘汰或恢复决定。</p>`
+      : '<p class="empty">没有到期的缓冲区物品。</p>';
+  }catch(e){ document.getElementById("ovBuffer").innerHTML = '<p class="empty">计算出错:'+esc(e.message)+'</p>'; }
+
+  /* 到龄复查 —— Rules.ageAudit */
+  try{
+    const rows = (typeof Rules.ageAudit === "function")
+      ? (Rules.ageAudit(items, todayISO()) || []) : [];
+    document.getElementById("ovAgeAudit").innerHTML = rows.length
+      ? `<table><thead><tr><th>编号</th><th>名称</th><th>已用年限</th><th>档次</th><th>建议</th></tr></thead><tbody>` +
+        rows.map(r => `<tr><td class="id-preview">${esc(r.id)}</td><td>${esc(r.name)}</td>
+          <td>${esc(r.ageYears)} 年</td><td><span class="badge b-memorial">${esc(r.tier)}</span></td>
+          <td>${esc(r.suggestion)}</td></tr>`).join("") +
+        `</tbody></table>`
+      : '<p class="empty">暂无到龄单品。</p>';
+  }catch(e){ document.getElementById("ovAgeAudit").innerHTML = '<p class="empty">计算出错:'+esc(e.message)+'</p>'; }
+}
+
+/* ================================================================
+ * Tab 2 衣物清单
+ * ================================================================ */
+const filterCategory = document.getElementById("filterCategory");
+const filterStatus = document.getElementById("filterStatus");
+fillSelect(filterCategory, CATEGORIES, "全部类目");
+filterCategory.addEventListener("change", renderList);
+filterStatus.addEventListener("change", renderList);
+
+function renderList(){
+  const fc = filterCategory.value, fs = filterStatus.value;
+  const rows = state.items.filter(i => (!fc || i.category === fc) && (!fs || i.status === fs));
+  document.getElementById("listCount").textContent = `共 ${rows.length} 件`;
+  document.getElementById("listBody").innerHTML = rows.length ? rows.map(i => {
+    // 按状态给出不同的快捷操作按钮
+    let actions = "";
+    if(i.status === "active"){
+      actions = `<button class="mini" data-act="buffer" data-id="${esc(i.id)}">移入缓冲区</button>
+                 <button class="mini" data-act="memorial" data-id="${esc(i.id)}">纪念盒</button>
+                 <button class="mini" data-act="retired" data-id="${esc(i.id)}">淘汰</button>`;
+    }else if(i.status === "buffer"){
+      actions = `<button class="mini" data-act="active" data-id="${esc(i.id)}">恢复在役</button>
+                 <button class="mini" data-act="retired" data-id="${esc(i.id)}">淘汰</button>`;
+    }else{
+      actions = `<button class="mini" data-act="active" data-id="${esc(i.id)}">恢复在役</button>`;
+    }
+    return `<tr class="clickable" data-id="${esc(i.id)}">
+      <td class="photo-feature"><span class="thumb" data-thumb="${esc(i.id)}"></span></td>
+      <td class="id-preview">${esc(i.id)}</td><td>${esc(i.name)}</td><td>${esc(i.category)}</td>
+      <td>${esc(i.color)}</td><td>${esc(i.scene)}</td><td>${esc(i.layer)}</td>
+      <td>${esc(i.condition)}</td><td>${esc(i.grade)}</td><td>${esc(i.frequency)}</td>
+      <td><span class="badge b-${esc(i.status)}">${STATUS_LABEL[i.status] || esc(i.status)}</span></td>
+      <td>${actions}</td></tr>`;
+  }).join("") : '<tr><td colspan="12" class="empty">没有符合条件的衣物。</td></tr>';
+  fillThumbs(document.getElementById("listBody")); // 异步加载缩略图(无照片保留灰块)
+}
+
+/* 行点击 = 编辑;按钮点击 = 状态流转 */
+document.getElementById("listBody").addEventListener("click", e => {
+  const btn = e.target.closest("button[data-act]");
+  if(btn){
+    e.stopPropagation();
+    changeStatus(btn.dataset.id, btn.dataset.act);
+    return;
+  }
+  const tr = e.target.closest("tr[data-id]");
+  if(tr) openEdit(tr.dataset.id);
+});
+
+function changeStatus(id, status){
+  const item = state.items.find(i => i.id === id);
+  if(!item) return;
+  const verb = { buffer:"移入缓冲区", memorial:"放入纪念盒", retired:"淘汰", active:"恢复为在役" }[status];
+  if(!confirm(`确认将「${item.name}」${verb}?`)) return;
+  item.status = status;
+  // 进入缓冲区记录起始日;离开缓冲区清空
+  item.bufferSince = (status === "buffer") ? todayISO() : null;
+  saveState();
+  renderAll();
+}
+
+/* ---------- 编辑弹层 ---------- */
+const editMask = document.getElementById("editMask");
+let editingId = null;
+fillSelect(document.getElementById("editCategory"), CATEGORIES);
+fillSelect(document.getElementById("editScene"), SCENES);
+fillSelect(document.getElementById("editLayer"), LAYERS);
+setupColorField("editColor", "editColorOther");
+
+function openEdit(id){
+  const it = state.items.find(i => i.id === id);
+  if(!it) return;
+  editingId = id;
+  document.getElementById("editIdShow").textContent = it.id;
+  document.getElementById("editName").value = it.name || "";
+  document.getElementById("editCategory").value = it.category;
+  setColorValue("editColor", "editColorOther", it.color || "");
+  document.getElementById("editScene").value = it.scene;
+  document.getElementById("editLayer").value = it.layer;
+  document.getElementById("editBrand").value = it.brand || "";
+  document.getElementById("editDate").value = it.purchaseDate || "";
+  document.getElementById("editPrice").value = it.price != null ? it.price : "";
+  document.getElementById("editCondition").value = it.condition;
+  document.getElementById("editGrade").value = it.grade;
+  document.getElementById("editFrequency").value = it.frequency;
+  document.getElementById("editStatus").value = it.status;
+  document.getElementById("editInPalette").value = String(!!it.inPalette);
+  document.getElementById("editNotes").value = it.notes || "";
+  editPendingPhoto = null;
+  document.getElementById("editPhoto").value = "";
+  loadPhotoPreview(document.getElementById("editPhotoPreview"), it.id);
+  editMask.classList.add("show");
+}
+
+/* 编辑弹层:上传照片(压缩后暂存,保存时写入 photoDB) */
+let editPendingPhoto = null;
+document.getElementById("editPhoto").addEventListener("change", async e => {
+  const f = e.target.files[0];
+  if(!f) return;
+  try{
+    editPendingPhoto = await compressPhoto(f);
+    document.getElementById("editPhotoPreview").innerHTML = `<img src="${editPendingPhoto}" alt="">`;
+  }catch(err){
+    editPendingPhoto = null;
+    alert("照片处理失败:" + err.message);
+  }
+});
+document.getElementById("editCancel").addEventListener("click", () => editMask.classList.remove("show"));
+editMask.addEventListener("click", e => { if(e.target === editMask) editMask.classList.remove("show"); });
+
+document.getElementById("editForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const it = state.items.find(i => i.id === editingId);
+  if(!it) return;
+  const oldStatus = it.status;
+  it.name = document.getElementById("editName").value.trim();
+  it.category = document.getElementById("editCategory").value;
+  it.color = getColorValue("editColor", "editColorOther");
+  it.scene = document.getElementById("editScene").value;
+  it.layer = document.getElementById("editLayer").value;
+  it.brand = document.getElementById("editBrand").value.trim();
+  it.purchaseDate = document.getElementById("editDate").value || null;
+  const p = document.getElementById("editPrice").value;
+  it.price = p === "" ? null : Number(p);
+  it.condition = document.getElementById("editCondition").value;
+  it.grade = document.getElementById("editGrade").value;
+  it.frequency = document.getElementById("editFrequency").value;
+  it.status = document.getElementById("editStatus").value;
+  it.inPalette = document.getElementById("editInPalette").value === "true";
+  it.notes = document.getElementById("editNotes").value;
+  if(it.status === "buffer" && oldStatus !== "buffer") it.bufferSince = todayISO();
+  if(it.status !== "buffer") it.bufferSince = null;
+  // 照片入库(异步,失败不影响保存;淘汰/删除均不删照片,保留历史)
+  if(editPendingPhoto && photosOK){
+    photoDB.put(it.id, editPendingPhoto).catch(() => {});
+    editPendingPhoto = null;
+  }
+  saveState();
+  editMask.classList.remove("show");
+  renderAll();
+});
+
+/* ================================================================
+ * Tab 3 新增登记
+ * ================================================================ */
+const addCategory = document.getElementById("addCategory");
+fillSelect(addCategory, CATEGORIES);
+fillSelect(document.getElementById("addScene"), SCENES);
+fillSelect(document.getElementById("addLayer"), LAYERS);
+document.getElementById("addLayer").value = "不适用";
+setupColorField("addColor", "addColorOther");
+
+/* 类目变化时刷新自动编号预览 —— Rules.nextId */
+function refreshIdPreview(){
+  const out = document.getElementById("addId");
+  if(!hasRules){ out.value = "—"; return; }
+  try{ out.value = Rules.nextId(addCategory.value, state.items); }
+  catch(e){ out.value = "—"; }
+}
+addCategory.addEventListener("change", refreshIdPreview);
+document.getElementById("addReset").addEventListener("click", () => setTimeout(resetAddForm, 0));
+
+/* ---------- 新增登记:双模式录入(拍照录入 / 手动录入) ---------- */
+let addMode = null;             // null(未选)| "photo"(拍照录入)| "manual"(手动录入)
+let addPendingPhoto = null;     // 压缩后的 dataURL,提交时按新编号写入 photoDB(两模式共用)
+let tagMode = "photo";          // photo = 衣服照片打标 | receipt = 收据/标签打标
+const ADD_FIELD_MAP = {
+  name:"addName", category:"addCategory", color:"addColor", scene:"addScene",
+  layer:"addLayer", brand:"addBrand", price:"addPrice", notes:"addNotes",
+  purchaseDate:"addDate", condition:"addCondition"
+};
+function clearUncertainFlags(){
+  Object.values(ADD_FIELD_MAP).forEach(id => document.getElementById(id).classList.remove("uncertain"));
+}
+/* 清空共用表单(含照片附件与不确定高亮) */
+function resetAddForm(){
+  document.getElementById("addForm").reset();
+  document.getElementById("addLayer").value = "不适用";
+  document.getElementById("addColorOther").style.display = "none";
+  document.getElementById("addColorOther").value = "";
+  addPendingPhoto = null;
+  document.getElementById("addPhoto").value = "";
+  document.getElementById("addPhotoPreview").innerHTML = "无照片";
+  clearUncertainFlags();
+  refreshIdPreview();
+}
+/* 清空拍照录入流程的中间状态(回到第一步) */
+function resetPhotoFlow(){
+  addPendingPhoto = null;
+  document.getElementById("pfPhoto").value = "";
+  document.getElementById("pfPreview").innerHTML = "无照片";
+  document.getElementById("pfStep2").style.display = "none";
+  document.getElementById("pfStep3").style.display = "none";
+  const paste = document.querySelector("#pfAiWrap .ai-paste");
+  if(paste) paste.value = "";
+  const fb = document.querySelector("#pfAiWrap .ai-fallback");
+  if(fb){ fb.value = ""; fb.style.display = "none"; }
+  const msg = document.querySelector("#pfAiWrap .ai-msg");
+  if(msg){ msg.textContent = ""; msg.className = "ai-msg"; }
+}
+/* 模式切换:清空另一模式的中间状态,再显示对应表单区 */
+function setAddMode(m){
+  addMode = m;
+  document.querySelectorAll("#addModeCards .mode-card").forEach(c =>
+    c.classList.toggle("selected", c.dataset.mode === m));
+  resetPhotoFlow();
+  resetAddForm();
+  document.getElementById("photoFlow").style.display = (m === "photo") ? "block" : "none";
+  // 手动模式直接显示表单;拍照模式等解析成功(第三步)再显示
+  document.getElementById("addForm").style.display = (m === "manual") ? "block" : "none";
+  document.getElementById("addModeHint").style.display = m ? "none" : "";
+}
+document.getElementById("addModeCards").addEventListener("click", e => {
+  const card = e.target.closest(".mode-card[data-mode]");
+  if(card) setAddMode(card.dataset.mode);
+});
+
+/* 拍照录入第一步:照片类型(衣服照片 / 收据或标签照片)+ 上传 */
+document.querySelectorAll('input[name="pfType"]').forEach(r =>
+  r.addEventListener("change", () => {
+    const checked = document.querySelector('input[name="pfType"]:checked');
+    tagMode = checked ? checked.value : "photo";
+    const copyBtn = document.querySelector("#pfAiWrap .ai-copy");
+    if(copyBtn) copyBtn.textContent =
+      tagMode === "receipt" ? "复制收据/标签打标 Prompt" : "复制打标 Prompt";
+    document.getElementById("pfTypeHint").textContent =
+      tagMode === "receipt" ? "品牌 / 价格 / 购入日期将以收据或标签内容为准。" : "";
+  }));
+
+document.getElementById("pfPhoto").addEventListener("change", async e => {
+  const f = e.target.files[0];
+  if(!f) return;
+  try{
+    addPendingPhoto = await compressPhoto(f);
+    document.getElementById("pfPreview").innerHTML = `<img src="${addPendingPhoto}" alt="">`;
+    document.getElementById("pfStep2").style.display = "block"; // 进入第二步
+  }catch(err){
+    addPendingPhoto = null;
+    alert("照片处理失败:" + err.message);
+  }
+});
+
+/* 手动模式:照片为可选附加项,仅压缩暂存 + 预览 */
+document.getElementById("addPhoto").addEventListener("change", async e => {
+  const f = e.target.files[0];
+  if(!f) return;
+  try{
+    addPendingPhoto = await compressPhoto(f);
+    document.getElementById("addPhotoPreview").innerHTML = `<img src="${addPendingPhoto}" alt="">`;
+  }catch(err){
+    addPendingPhoto = null;
+    alert("照片处理失败:" + err.message);
+  }
+});
+
+/* 用户手动修改字段时,清除该字段的"不确定"黄色高亮 */
+document.getElementById("addForm").addEventListener("input", e => {
+  if(e.target && e.target.classList) e.target.classList.remove("uncertain");
+});
+document.getElementById("addForm").addEventListener("change", e => {
+  if(e.target && e.target.classList) e.target.classList.remove("uncertain");
+});
+
+/* 打标 Prompt:与 prompts.md 模板 2(照片)/ 模板 3(收据/标签)同文,占位符已填 */
+function buildTagPrompt(){
+  const pal = (state.config && state.config.palette) || {};
+  const accent = (pal.accent && pal.accent.length) ? pal.accent.join("/") : "无";
+  if(tagMode === "receipt"){
+    return [
+      "你是收据识别助手。从购物小票、订单截图或衣服标签照片中提取衣物商品的信息,按下方契约输出 JSON。你的回复会被程序直接解析,格式必须一字不差。",
+      "",
+      "规则:",
+      "- brand、price、purchaseDate 直接从收据/标签上读取;上面没有或看不清的填 null,并把字段名加入 uncertain 数组,不要编造。",
+      "- name、category、color、scene、layer 从商品名称推断;category 从枚举中选:衬衫|T恤|针织|裤装|西装|外层|鞋|运动|配饰;推断不出的字段填 null 并列入 uncertain。",
+      "- inPalette 按调色板判断(主色:海军蓝/灰色/白色/黑色;点缀色:" + accent + ");颜色未知时填 null 并列入 uncertain。",
+      '- condition 固定填 "A"(收据/标签场景视为全新)。',
+      "- 一张收据有多件衣物商品时,逐件输出多个 JSON 代码块,一件一个,顺序与收据一致;非衣物商品跳过。",
+      "- 代码块前后不要有任何解释文字。",
+      "",
+      "输出契约(每件一个):",
+      '{"item": {"name": "...", "category": "...", "color": "...", "inPalette": true|false, "scene": "...", "layer": "...", "brand": "...", "price": 数字, "purchaseDate": "YYYY-MM-DD", "condition": "A", "notes": "..."}, "uncertain": ["字段名"]}',
+      "",
+      "收据/订单截图:(随本条消息一并发送)",
+      "补充说明(可为空):"
+    ].join("\n");
+  }
+  return [
+    "你是衣物照片识别助手。根据照片推断这件衣物的属性,按下方契约输出 JSON。你的回复会被程序直接解析,格式必须一字不差。",
+    "",
+    "规则:",
+    "- 只输出一个 JSON 代码块,代码块前后不要有任何文字。",
+    "- 至少给出 name/category/color/scene/condition,品牌无清晰标识则填 null。",
+    "- category 从枚举中选:衬衫|T恤|针织|裤装|西装|外层|鞋|运动|配饰。",
+    "- color 用简短中文;inPalette 按调色板判断(主色:海军蓝/灰色/白色/黑色;点缀色:" + accent + ")。",
+    "- scene 从 正式|智能休闲|运动 中选;layer 从 基础层|中间层|外层|不适用 中选。",
+    '- condition 从 A|B|C 中选,依据照片中可见的磨损、起球、泛黄等痕迹判断:无明显痕迹给 A;看不出时默认 "A" 并把 "condition" 加入 uncertain 数组。',
+    "- purchaseDate 照片看不出,固定填 null。",
+    "- 照片看不清或看不出的字段填 null,并把字段名加入 uncertain 数组。",
+    "- brand:没有清晰可见的品牌标识就填 null,绝不编造品牌。price 除非吊牌价格清晰可见,否则同样填 null 并列入 uncertain。",
+    "",
+    "输出契约:",
+    '{"item": {"name": "...", "category": "...", "color": "...", "inPalette": true|false, "scene": "...", "layer": "...", "brand": "...", "price": 数字, "purchaseDate": null, "condition": "A|B|C", "notes": "..."}, "uncertain": ["字段名"]}',
+    "",
+    "照片:(随本条消息一并发送)",
+    "补充说明(可为空):"
+  ].join("\n");
+}
+
+/* 解析回填:自动填充表单,uncertain 字段黄色高亮提醒人工确认 */
+function applyTagResult(data){
+  if(!data || typeof data !== "object" || !data.item || typeof data.item !== "object")
+    throw new Error('解析结果缺少 "item" 对象,请检查回复是否符合契约。');
+  const it = data.item;
+  clearUncertainFlags();
+  if(it.name != null) document.getElementById("addName").value = String(it.name);
+  if(it.category && CATEGORIES.includes(it.category)){
+    document.getElementById("addCategory").value = it.category;
+    refreshIdPreview();
+  }
+  if(it.color != null) setColorValue("addColor", "addColorOther", String(it.color));
+  if(it.scene && SCENES.includes(it.scene)) document.getElementById("addScene").value = it.scene;
+  if(it.layer && LAYERS.includes(it.layer)) document.getElementById("addLayer").value = it.layer;
+  if(it.brand != null) document.getElementById("addBrand").value = String(it.brand);
+  if(it.price != null && it.price !== "" && !isNaN(Number(it.price)))
+    document.getElementById("addPrice").value = Number(it.price);
+  if(it.purchaseDate && /^\d{4}-\d{2}-\d{2}$/.test(it.purchaseDate))
+    document.getElementById("addDate").value = it.purchaseDate;
+  if(it.condition && ["A","B","C"].includes(String(it.condition)))
+    document.getElementById("addCondition").value = String(it.condition);
+  if(it.notes != null) document.getElementById("addNotes").value = String(it.notes);
+  (Array.isArray(data.uncertain) ? data.uncertain : []).forEach(f => {
+    const id = ADD_FIELD_MAP[f];
+    if(id) document.getElementById(id).classList.add("uncertain");
+  });
+}
+
+/* 初始化拍照录入第二步的 AI 组件(沿用 createAiHelper);解析成功 → 第三步显示表单 */
+(function initPhotoFlowAi(){
+  const helper = createAiHelper({
+    copyLabel: "复制打标 Prompt",
+    hint: "把照片和 Prompt 一起发给 claude.ai,再把回复整段粘贴回来解析。",
+    getPrompt: buildTagPrompt,
+    // 自动模式:打标 Prompt + 当前照片(衣服/收据两种 tagMode 共用)发给豆包
+    auto: {
+      getImage: () => {
+        if(!addPendingPhoto) throw new Error("请先在第一步上传照片。");
+        return addPendingPhoto;
+      },
+      maxTokens: 1500
+    },
+    onParsed: data => {
+      applyTagResult(data);
+      // 第三步:展示已回填的完整表单(同手动模式)供确认修改
+      document.getElementById("pfStep3").style.display = "block";
+      document.getElementById("addForm").style.display = "block";
+      if(addPendingPhoto)
+        document.getElementById("addPhotoPreview").innerHTML = `<img src="${addPendingPhoto}" alt="">`;
+      refreshIdPreview();
+    }
+  });
+  document.getElementById("pfAiWrap").appendChild(helper);
+})();
+
+let pendingItem = null; // 等待用户确认破例保存的条目
+const warnMask = document.getElementById("warnMask");
+
+document.getElementById("addForm").addEventListener("submit", e => {
+  e.preventDefault();
+  if(!hasRules){ alert("规则引擎未加载,暂不能登记。"); return; }
+  const colorVal = getColorValue("addColor", "addColorOther");
+  if(!colorVal){ alert("请填写颜色(选择「其他…」时需手动输入)。"); return; }
+  const cat = addCategory.value;
+  const priceVal = document.getElementById("addPrice").value;
+  const item = {
+    id: Rules.nextId(cat, state.items),           // 提交时再取一次,保证编号最新
+    name: document.getElementById("addName").value.trim(),
+    category: cat,
+    color: colorVal,
+    inPalette: true,                               // 先占位,下面按色板检查结果修正
+    scene: document.getElementById("addScene").value,
+    layer: document.getElementById("addLayer").value,
+    brand: document.getElementById("addBrand").value.trim(),
+    purchaseDate: document.getElementById("addDate").value || todayISO(),
+    price: priceVal === "" ? null : Number(priceVal),
+    currency: state.config.currency || "GBP",
+    condition: document.getElementById("addCondition").value,
+    grade: document.getElementById("addGrade").value,
+    frequency: document.getElementById("addFrequency").value,
+    status: "active",
+    bufferSince: null,
+    notes: document.getElementById("addNotes").value.trim()
+  };
+
+  const warnings = [];
+  /* 色板检查 —— Rules.checkPalette */
+  try{
+    const pal = Rules.checkPalette(item, state.config);
+    item.inPalette = !!pal.pass;
+    if(!pal.pass) warnings.push("色板约束:" + (pal.message || "颜色不在主色板/点缀色板内"));
+  }catch(err){ /* 引擎异常时不拦截登记 */ }
+  /* 上限检查 —— Rules.capStatus */
+  try{
+    const caps = Rules.capStatus(state.items, state.config);
+    const row = caps.find(c => c.category === item.category);
+    if(row && row.count >= row.cap){
+      warnings.push(`数量上限:「${item.category}」已有 ${row.count} 件,上限 ${row.cap},再添加将超限`);
+    }
+  }catch(err){ }
+
+  if(warnings.length){
+    // 触碰约束 —— 醒目弹层提示,允许坚持保存
+    pendingItem = item;
+    document.getElementById("warnList").innerHTML = warnings.map(w => `<li>${esc(w)}</li>`).join("");
+    warnMask.classList.add("show");
+  }else{
+    commitNewItem(item);
+  }
+});
+
+document.getElementById("warnCancel").addEventListener("click", () => {
+  pendingItem = null;
+  warnMask.classList.remove("show");
+});
+document.getElementById("warnForce").addEventListener("click", () => {
+  if(pendingItem){
+    // 坚持保存:备注自动附「破例」
+    pendingItem.notes = (pendingItem.notes ? pendingItem.notes + " " : "") + "「破例」";
+    commitNewItem(pendingItem);
+    pendingItem = null;
+  }
+  warnMask.classList.remove("show");
+});
+
+function commitNewItem(item){
+  state.items.push(item);
+  saveState();
+  // 照片写入 photoDB(key = item.id,异步,失败不影响登记;两模式共用)
+  if(addPendingPhoto && photosOK){
+    photoDB.put(item.id, addPendingPhoto).catch(() => {});
+  }
+  resetAddForm();
+  resetPhotoFlow();
+  // 拍照模式提交后回到第一步,表单收起;手动模式表单保持可见
+  if(addMode === "photo") document.getElementById("addForm").style.display = "none";
+  renderAll();
+  alert(`已登记:${item.id} ${item.name}`);
+}
+
+/* ================================================================
+ * Tab 4 购买决策
+ * ================================================================ */
+fillSelect(document.getElementById("buyCategory"), CATEGORIES);
+fillSelect(document.getElementById("buyScene"), SCENES);
+
+const STEP_BADGE = {
+  pass: ['b-pass', '通过'],
+  fail: ['b-fail', '不通过'],
+  warn: ['b-warn', '警告'],
+  llm:  ['b-llm',  '需 LLM 搭配检查']
+};
+let lastCandidate = null; // 最近一次运行五步检查的候选衣物(供 AI Prompt 使用)
+
+/* 精简 JSON:id/name/category/color/scene */
+function slimActiveItems(){
+  return state.items.filter(i => i.status === "active")
+    .map(i => ({ id:i.id, name:i.name, category:i.category, color:i.color, scene:i.scene }));
+}
+function slimCandidate(c){
+  return { name:c.name, category:c.category, color:c.color, scene:c.scene };
+}
+
+/* 嵌入点 2:LLM 搭配检查 Prompt(候选 + 在役衣物精简 JSON) */
+function buildOutfitCheckPrompt(){
+  if(!lastCandidate) throw new Error("请先运行五步检查。");
+  return "你是我的穿搭顾问。我想购买下面这件候选衣物:\n" +
+    JSON.stringify(slimCandidate(lastCandidate)) +
+    "\n我衣柜里当前在役的衣物清单(精简 JSON):\n" +
+    JSON.stringify(slimActiveItems()) +
+    "\n请判断这件候选衣物能否与现有衣物组成至少 3 套合理搭配,并列出具体组合。" +
+    "\n请只输出一个 JSON 对象(可以包在 ```json 围栏里),契约:\n" +
+    '{"verdict":"通过" 或 "不通过","outfits":[{"items":["该套搭配的单品名称(含候选)"],"scene":"该套适用场景"}],"comment":"简要说明"}';
+}
+function mountOutfitCheckHelper(stepEl){
+  const body = stepEl.querySelector(".s-body") || stepEl;
+  const helper = createAiHelper({
+    copyLabel: "复制搭配检查 Prompt",
+    hint: "发给 claude.ai 做三套搭配检查,回复粘贴回来解析。",
+    getPrompt: buildOutfitCheckPrompt,
+    auto: { maxTokens: 1500 }, // 纯文本:候选 + 在役清单 → 豆包,同一解析契约
+    onParsed: data => {
+      if(!data || (data.verdict !== "通过" && data.verdict !== "不通过"))
+        throw new Error('回复中 "verdict" 必须是 "通过" 或 "不通过"。');
+      // 把灰色 llm 徽章替换为绿/红
+      const badge = stepEl.querySelector(".badge");
+      badge.className = "badge " + (data.verdict === "通过" ? "b-pass" : "b-fail");
+      badge.textContent = data.verdict;
+      // 展示搭配组合
+      let html = '<div class="outfit-result">';
+      (Array.isArray(data.outfits) ? data.outfits : []).forEach((o, i) => {
+        html += `<div class="of-line">搭配 ${i + 1}(${esc((o && o.scene) || "—")}):` +
+          `${(o && Array.isArray(o.items) ? o.items : []).map(esc).join(" + ")}</div>`;
+      });
+      if(data.comment) html += `<div class="of-line" style="color:var(--muted)">${esc(data.comment)}</div>`;
+      html += "</div>";
+      const old = body.querySelector(".outfit-result");
+      if(old) old.remove();
+      body.insertAdjacentHTML("beforeend", html);
+    }
+  });
+  body.appendChild(helper);
+}
+
+/* 嵌入点 3:综合购买建议 Prompt(候选 + 衣柜统计摘要) */
+function buildAdvicePrompt(){
+  if(!lastCandidate) throw new Error("请先运行五步检查。");
+  const c = lastCandidate;
+  const active = state.items.filter(i => i.status === "active");
+  const counts = {}, sceneCounts = {};
+  active.forEach(i => {
+    counts[i.category] = (counts[i.category] || 0) + 1;
+    sceneCounts[i.scene] = (sceneCounts[i.scene] || 0) + 1;
+  });
+  const sameCat = active.filter(i => i.category === c.category)
+    .map(i => ({ name:i.name, color:i.color, scene:i.scene }));
+  return "我在考虑是否购买这件衣物,请基于我的衣柜情况给出综合购买建议。\n" +
+    "候选:" + JSON.stringify(Object.assign(slimCandidate(c), { price: c.price })) +
+    "\n衣柜统计摘要:\n- 各类目在役数量:" + JSON.stringify(counts) +
+    "\n- 各类目上限:" + JSON.stringify((state.config && state.config.caps) || {}) +
+    "\n- 场景分布(件数):" + JSON.stringify(sceneCounts) +
+    "\n- 目标场景配比:" + JSON.stringify((state.config && state.config.sceneTarget) || {}) +
+    "\n- 该类目(" + c.category + ")现有清单:" + JSON.stringify(sameCat) +
+    "\n请只输出一个 JSON 对象(可以包在 ```json 围栏里),契约:\n" +
+    '{"advice":"买" 或 "不买" 或 "先淘汰再买","reasons":["理由1","理由2"],"alternative":"替代方案,没有则空字符串"}';
+}
+function mountAdviceHelper(){
+  const wrap = document.getElementById("buyAdviceWrap");
+  wrap.innerHTML = "";
+  const helper = createAiHelper({
+    copyLabel: "复制综合购买建议 Prompt",
+    hint: "把衣柜摘要发给 claude.ai,回复粘贴回来生成建议卡片。",
+    getPrompt: buildAdvicePrompt,
+    auto: { maxTokens: 1500 }, // 纯文本:候选 + 衣柜统计摘要 → 豆包,同一解析契约
+    onParsed: data => {
+      const cls = { "买":"buy", "不买":"nobuy", "先淘汰再买":"swap" }[data && data.advice];
+      if(!cls) throw new Error('回复中 "advice" 必须是 "买" / "不买" / "先淘汰再买"。');
+      const old = wrap.querySelector(".advice-card");
+      if(old) old.remove();
+      wrap.insertAdjacentHTML("beforeend",
+        `<div class="advice-card ${cls}">
+          <h4>AI 综合建议:${esc(data.advice)}</h4>
+          <ul>${(Array.isArray(data.reasons) ? data.reasons : []).map(r => `<li>${esc(r)}</li>`).join("")}</ul>
+          ${data.alternative ? `<p style="font-size:13px;margin-top:6px">替代方案:${esc(data.alternative)}</p>` : ""}
+        </div>`);
+    }
+  });
+  wrap.appendChild(helper);
+}
+
+document.getElementById("buyForm").addEventListener("submit", e => {
+  e.preventDefault();
+  if(!hasRules){ alert("规则引擎未加载,暂不能运行检查。"); return; }
+  const candidate = {
+    name: document.getElementById("buyName").value.trim(),
+    category: document.getElementById("buyCategory").value,
+    color: document.getElementById("buyColor").value.trim(),
+    scene: document.getElementById("buyScene").value,
+    price: Number(document.getElementById("buyPrice").value)
+  };
+  let res;
+  try{
+    /* 五步购买检查 —— Rules.purchaseCheck */
+    res = Rules.purchaseCheck(candidate, state.items, state.config);
+  }catch(err){
+    alert("检查出错:" + err.message);
+    return;
+  }
+  lastCandidate = candidate;
+  const stepsBox = document.getElementById("buySteps");
+  stepsBox.innerHTML = (res.steps || []).map((s, idx) => {
+    const [cls, label] = STEP_BADGE[s.result] || ['b-llm', esc(s.result)];
+    return `<div class="step" data-step-idx="${idx}">
+      <span class="badge ${cls}">${label}</span>
+      <div class="s-body" style="flex:1"><div class="s-name">第 ${esc(s.step)} 步 · ${esc(s.name)}</div>
+      <div class="s-detail">${esc(s.detail)}</div></div>
+    </div>`;
+  }).join("");
+  // result==="llm" 的步骤:挂载「复制搭配检查 Prompt」AI 助手
+  (res.steps || []).forEach((s, idx) => {
+    if(s.result !== "llm") return;
+    const stepEl = stepsBox.querySelector(`[data-step-idx="${idx}"]`);
+    if(stepEl) mountOutfitCheckHelper(stepEl);
+  });
+  document.getElementById("buyVerdict").textContent = "结论:" + (res.verdict || "—");
+  mountAdviceHelper(); // verdict 下方:综合购买建议 AI 助手
+  document.getElementById("buyResultCard").style.display = "block";
+});
+
+/* ================================================================
+ * Tab 搭配建议 —— Rules.suggestOutfits(items, config, {scene, limit, seed})
+ * ================================================================ */
+const suggestSceneSel = document.getElementById("suggestScene");
+fillSelect(suggestSceneSel, SCENES, "全部场景");
+let suggestSeed = Date.now() % 1000;
+let lastOutfits = [];
+suggestSceneSel.addEventListener("change", () => renderSuggest());
+document.getElementById("suggestRefresh").addEventListener("click", () => {
+  suggestSeed = Date.now() % 1000; // 换一批 = 换 seed
+  renderSuggest();
+});
+
+async function renderSuggest(){
+  const box = document.getElementById("suggestCards");
+  if(!box) return;
+  if(!hasRules || typeof Rules.suggestOutfits !== "function"){
+    box.innerHTML = '<p class="empty">规则引擎未加载或暂不支持搭配建议。</p>';
+    return;
+  }
+  let outfits = [];
+  try{
+    outfits = Rules.suggestOutfits(state.items, state.config, {
+      scene: suggestSceneSel.value || undefined,
+      limit: 6,
+      seed: suggestSeed
+    }) || [];
+  }catch(e){
+    box.innerHTML = '<p class="empty">生成搭配出错:' + esc(e.message) + '</p>';
+    return;
+  }
+  lastOutfits = outfits;
+  if(!outfits.length){
+    box.innerHTML = '<p class="empty">当前条件下没有可生成的搭配。</p>';
+    return;
+  }
+  // 批量取照片;有照片显示照片,无照片显示名称色块
+  const ids = [...new Set(outfits.flatMap(o => o.itemIds || []))];
+  let photos = {};
+  if(photosOK){
+    try{ photos = await photoDB.getMany(ids); }catch(e){ photos = {}; }
+  }
+  box.innerHTML = outfits.map((o, idx) => {
+    const cells = (o.itemIds || []).map((id, k) => {
+      const it = state.items.find(x => x.id === id);
+      const name = (o.itemNames || [])[k] || (it && it.name) || id;
+      const p = photos[id];
+      if(p) return `<div class="o-it"><img src="${p}" alt=""><span>${esc(name)}</span></div>`;
+      const bg = colorOf(it && it.color);
+      return `<div class="o-it block" style="background:${bg}"><span style="color:${textColorFor(bg)};text-shadow:none">${esc(name)}</span></div>`;
+    }).join("");
+    return `<div class="outfit-card">
+      <div class="o-scene">${esc(o.scene || "—")}</div>
+      <div class="o-items">${cells}</div>
+      ${o.note ? `<p class="o-note">${esc(o.note)}</p>` : ""}
+      <button type="button" class="mini" data-collage="${idx}">生成拼贴图</button>
+    </div>`;
+  }).join("");
+}
+
+document.getElementById("suggestCards").addEventListener("click", e => {
+  const btn = e.target.closest("button[data-collage]");
+  if(!btn) return;
+  const o = lastOutfits[Number(btn.dataset.collage)];
+  if(o) makeCollage(o).catch(err => alert("生成拼贴图失败:" + err.message));
+});
+
+/* ---------- 拼贴图:canvas 垂直构图 600×800,白底 ----------
+ * 外层/上装 左侧大图;裤装 右下;鞋 右下角;其余(配饰等)右上;
+ * 底部标注场景与单品名。全无照片时用文字色块代替,仍可导出。 */
+const TOP_CATS = ["外层","西装","衬衫","针织","T恤","运动"];
+function loadImg(src){
+  return new Promise((resolve, reject) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = () => reject(new Error("照片加载失败"));
+    im.src = src;
+  });
+}
+async function makeCollage(outfit){
+  const canvas = document.getElementById("collageCanvas");
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, 600, 800);
+
+  const items = (outfit.itemIds || []).map((id, i) => {
+    const it = state.items.find(x => x.id === id);
+    return it || { id, name: (outfit.itemNames || [])[i] || id, category: "", color: "" };
+  });
+  let photos = {};
+  if(photosOK){
+    try{ photos = await photoDB.getMany(items.map(i => i.id)); }catch(e){ photos = {}; }
+  }
+  const tops = items.filter(i => TOP_CATS.includes(i.category));
+  const pants = items.filter(i => i.category === "裤装");
+  const shoes = items.filter(i => i.category === "鞋");
+  const rest = items.filter(i => !tops.includes(i) && !pants.includes(i) && !shoes.includes(i));
+
+  const slots = [];
+  const topH = tops.length ? Math.floor(620 / tops.length) : 0;
+  tops.forEach((it, i) => slots.push({ it, x: 28, y: 28 + i * topH, w: 330, h: topH - 14 }));
+  rest.forEach((it, i) => slots.push({ it, x: 382, y: 28 + i * 70, w: 190, h: 62 }));
+  const pantsH = pants.length ? Math.floor(330 / pants.length) : 0;
+  pants.forEach((it, i) => slots.push({ it, x: 382, y: 180 + i * pantsH, w: 190, h: pantsH - 10 }));
+  const shoeH = shoes.length ? Math.floor(128 / shoes.length) : 0;
+  shoes.forEach((it, i) => slots.push({ it, x: 402, y: 522 + i * shoeH, w: 170, h: shoeH - 6 }));
+
+  for(const s of slots){
+    const photo = photos[s.it.id];
+    let drawn = false;
+    if(photo){
+      try{
+        const img = await loadImg(photo);
+        const k = Math.min(s.w / img.width, s.h / img.height);
+        const w = img.width * k, h = img.height * k;
+        ctx.drawImage(img, s.x + (s.w - w) / 2, s.y + (s.h - h) / 2, w, h);
+        drawn = true;
+      }catch(e){ /* 退回文字色块 */ }
+    }
+    if(!drawn){
+      const bg = colorOf(s.it.color);
+      ctx.fillStyle = bg;
+      ctx.fillRect(s.x, s.y, s.w, s.h);
+      ctx.fillStyle = textColorFor(bg);
+      ctx.font = "15px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(s.it.name, s.x + s.w / 2, s.y + s.h / 2, s.w - 16);
+    }
+  }
+  // 底部标注:场景 + 单品名
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#1f3a5f";
+  ctx.font = "bold 18px sans-serif";
+  ctx.fillText("场景:" + (outfit.scene || "—"), 28, 700);
+  ctx.fillStyle = "#5f6b78";
+  ctx.font = "13px sans-serif";
+  const names = ((outfit.itemNames && outfit.itemNames.length) ? outfit.itemNames : items.map(i => i.name)).join(" · ");
+  let line = "", y = 726;
+  for(const ch of names){
+    if(ctx.measureText(line + ch).width > 544){
+      ctx.fillText(line, 28, y);
+      y += 20; line = ch;
+      if(y > 786) break;
+    }else line += ch;
+  }
+  if(line && y <= 786) ctx.fillText(line, 28, y);
+
+  document.getElementById("collageCard").style.display = "block";
+  canvas.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+document.getElementById("collageDownload").addEventListener("click", () => {
+  const canvas = document.getElementById("collageCanvas");
+  canvas.toBlob(blob => {
+    if(!blob){ alert("导出失败。"); return; }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "outfit_" + todayISO() + ".png"; // 文件名 outfit_日期.png
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, "image/png");
+});
+
+/* ================================================================
+ * Tab 5 数据管理
+ * ================================================================ */
+document.getElementById("btnExport").addEventListener("click", () => {
+  // 导出当前完整数据为 JSON 文件下载
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "wardrobe_" + todayISO() + ".json";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById("btnImport").addEventListener("click", () =>
+  document.getElementById("importFile").click());
+
+document.getElementById("importFile").addEventListener("change", e => {
+  const file = e.target.files[0];
+  e.target.value = ""; // 允许重复选择同一文件
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let data;
+    try{ data = JSON.parse(reader.result); }
+    catch(err){ alert("导入失败:文件不是合法 JSON。"); return; }
+    // 校验顶层结构:必须含 config 对象与 items 数组
+    if(!data || typeof data !== "object" || typeof data.config !== "object" || data.config === null || !Array.isArray(data.items)){
+      alert("导入失败:顶层结构不符合契约(需包含 config 对象与 items 数组)。");
+      return;
+    }
+    // 兼容 meta 字段:导入无 meta 时补默认
+    if(!data.meta || typeof data.meta !== "object") data.meta = { lastAuditDate: null };
+    if(!("lastAuditDate" in data.meta)) data.meta.lastAuditDate = null;
+    if(!confirm(`将以导入数据整体替换当前数据(共 ${data.items.length} 件衣物),确认继续?`)) return;
+    state = data;
+    saveState();
+    renderAll();
+    refreshIdPreview();
+    refreshColorSelects(); // 色板可能变化,重建颜色选项
+    alert("导入成功,已替换为新数据。");
+  };
+  reader.readAsText(file, "utf-8");
+});
+
+document.getElementById("btnClear").addEventListener("click", () => {
+  if(!confirm("确认清空全部数据?此操作不可恢复,将恢复为内置示例数据。")) return;
+  state = JSON.parse(JSON.stringify(DEFAULT_DATA));
+  saveState();
+  renderAll();
+  refreshIdPreview();
+  refreshColorSelects(); // 色板恢复默认,重建颜色选项
+  alert("已清空并恢复为内置示例数据。");
+});
+
+function renderDataInfo(){
+  document.getElementById("dataInfo").textContent =
+    `当前数据:${state.items.length} 件衣物 · 货币 ${state.config.currency || "GBP"} · 存储键 ${STORAGE_KEY}`;
+}
+
+/* ---------- AI 设置(豆包):表单初始化 / 保存 / 测试连接 ---------- */
+(function initAiSettings(){
+  const keyEl = document.getElementById("aiKey");
+  const modelEl = document.getElementById("aiModel");
+  const epEl = document.getElementById("aiEndpoint");
+  const msg = document.getElementById("aiTestMsg");
+  const cfg = loadAiConfig();
+  keyEl.value = cfg.apiKey;
+  modelEl.value = cfg.model;
+  epEl.value = cfg.endpoint;
+
+  function saveFromForm(){
+    const c = {
+      apiKey: keyEl.value.trim(),
+      model: modelEl.value.trim() || AI_DEFAULTS.model,
+      endpoint: epEl.value.trim() || AI_DEFAULTS.endpoint
+    };
+    saveAiConfig(c);
+    modelEl.value = c.model;
+    epEl.value = c.endpoint;
+    refreshAiAutoButtons(); // 各 AI 点位「自动调用」按钮文案随配置状态刷新
+    return c;
+  }
+
+  document.getElementById("aiSave").addEventListener("click", () => {
+    const c = saveFromForm();
+    msg.textContent = c.apiKey ? "已保存。" : "已保存(API Key 为空,自动模式不可用)。";
+    msg.className = "ai-msg " + (c.apiKey ? "ok" : "err");
+  });
+
+  document.getElementById("aiTest").addEventListener("click", async () => {
+    const c = saveFromForm(); // 测试前先按当前输入保存
+    if(!c.apiKey){
+      msg.textContent = "请先填写 API Key。";
+      msg.className = "ai-msg err";
+      return;
+    }
+    const btn = document.getElementById("aiTest");
+    btn.disabled = true;
+    msg.textContent = "测试中…";
+    msg.className = "ai-msg";
+    try{
+      // 极小 max_tokens 的探活请求:只看 HTTP 状态,不要求返回内容
+      const resp = await fetch(c.endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + c.apiKey
+        },
+        body: JSON.stringify({
+          model: c.model,
+          messages: [{ role: "user", content: "ping" }],
+          max_tokens: 16
+        })
+      });
+      if(resp.ok){
+        msg.textContent = "连接成功,API Key 与模型可用。";
+        msg.className = "ai-msg ok";
+      }else{
+        const bodyText = await resp.text();
+        let detail = "";
+        try{
+          const j = JSON.parse(bodyText);
+          detail = (j.error && j.error.message) || j.message || "";
+        }catch(e){ /* 非 JSON */ }
+        msg.textContent = resp.status === 401
+          ? "401:API Key 错误或未授权。"
+          : "失败(HTTP " + resp.status + "):" + (detail || bodyText.slice(0, 200));
+        msg.className = "ai-msg err";
+      }
+    }catch(e){
+      msg.textContent = (e && e.name === "TypeError")
+        ? "无法连接,请确认已运行 node doubao-proxy.js 或检查 API 地址。"
+        : "测试失败:" + e.message;
+      msg.className = "ai-msg err";
+    }finally{
+      btn.disabled = false;
+    }
+  });
+})();
+
+/* ================================================================
+ * 总渲染入口
+ * ================================================================ */
+function renderAll(){
+  renderOverview();
+  renderList();
+  renderDataInfo();
+  renderAuditBanner();
+  renderSuggest();
+}
+
+/* ================================================================
+ * 盘点提醒 —— Rules.auditReminder(meta, today, config)
+ * ================================================================ */
+function renderAuditBanner(){
+  const el = document.getElementById("auditBanner");
+  el.style.display = "none";
+  if(!hasRules || typeof Rules.auditReminder !== "function") return;
+  try{
+    const r = Rules.auditReminder(state.meta, todayISO(), state.config);
+    if(r && r.due){
+      el.innerHTML = `<span>${esc(r.message || `距上次盘点已 ${r.daysSince} 天,建议尽快完成一次衣橱盘点。`)}</span>
+        <button type="button" class="mini" id="bannerGoAudit">去总览完成盘点</button>`;
+      el.style.display = "flex";
+      el.querySelector("#bannerGoAudit").addEventListener("click", () => {
+        document.querySelector('#tabs button[data-tab="overview"]').click();
+      });
+    }
+  }catch(e){ /* 降级:不显示横幅 */ }
+}
+
+document.getElementById("btnAuditDone").addEventListener("click", () => {
+  if(!confirm("将本次盘点完成日期记为今天?")) return;
+  state.meta = (state.meta && typeof state.meta === "object") ? state.meta : {};
+  state.meta.lastAuditDate = todayISO();
+  saveState();
+  renderAll();
+  alert("已记录:本次盘点完成于 " + state.meta.lastAuditDate);
+});
+
+if(!hasRules) document.getElementById("rulesMissing").style.display = "block";
+refreshIdPreview();
+renderAll();
+
+/* ---------- 照片库初始化:IndexedDB 不可用时隐藏照片功能,不报错 ---------- */
+(async () => {
+  try{
+    await photoDB.open();
+    photosOK = true;
+    renderList();    // 重渲染以加载缩略图
+    renderSuggest(); // 搭配卡片补照片
+  }catch(e){
+    photosOK = false;
+    document.body.classList.add("no-photos");
+  }
+})();
+</script>
+</body>
+</html>
